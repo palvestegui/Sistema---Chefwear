@@ -1,7 +1,9 @@
-import React from 'react';
-import * as LucideIcons from 'lucide-react';
-const { FileText, DollarSign, Eye, Trash2 } = LucideIcons;
+import React, { useState } from 'react';
+import { FileText, DollarSign, Eye, Trash2, Pencil } from 'lucide-react';
 import { getOrderSellerName } from '../../utils/sellerUtils';
+import { useAuth } from '../../contexts/AuthContext';
+import { Order } from '../../types';
+import { OrderFinancialAdjustmentModal } from '../modals/OrderFinancialAdjustmentModal';
 
 export interface HistoryViewProps {
   orders: any[];
@@ -30,6 +32,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   setConfirmDeleteId,
   normRole
 }) => {
+  const { isSuperAdmin } = useAuth();
+  const [adjustingFinancialOrder, setAdjustingFinancialOrder] = useState<Order | null>(null);
+
   const deliveredOrders = orders.filter(o => o.status === 'Entregado');
   const totalFinishedRevenue = deliveredOrders.reduce((a, b) => a + (Number(b.totalPrice) || 0), 0);
   const totalReceivables = deliveredOrders.reduce((a, b) => a + (Number(b.totalPrice || 0) - Number(b.amountCollected || 0)), 0);
@@ -72,6 +77,15 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                   <p className="text-stone-400">Total: Bs{Number(order.totalPrice || 0).toFixed(2)}</p>
                   <p className="text-green-500">Cobrado: Bs{Number(order.amountCollected || 0).toFixed(2)}</p>
                   <p className="text-red-500">Saldo: Bs{Math.max(0, Number(order.totalPrice || 0) - Number(order.amountCollected || 0)).toFixed(2)}</p>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setAdjustingFinancialOrder(order)}
+                      className="mt-2 text-[10px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1.5 rounded-lg font-black uppercase tracking-widest transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Pencil size={11} /> Ajustar Valores
+                    </button>
+                  )}
                 </td>
                 <td className="px-6 py-5">
                   <div className="flex flex-col gap-2 items-end">
@@ -118,6 +132,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           </tbody>
         </table>
       </div>
+
+      {adjustingFinancialOrder && (
+        <OrderFinancialAdjustmentModal
+          order={adjustingFinancialOrder}
+          onClose={() => setAdjustingFinancialOrder(null)}
+        />
+      )}
     </div>
   );
 };

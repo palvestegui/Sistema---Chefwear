@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 // from 'react';
 import { 
-  FileText, DollarSign, Ban, Lock, ImageIcon, ArrowRight, X, Download, Users, Trash2, Eye 
+  FileText, DollarSign, Ban, Lock, ImageIcon, ArrowRight, X, Download, Users, Trash2, Eye, Pencil 
 } from 'lucide-react';
 import { StatusBadge } from '../../ui/StatusBadge';
 import { OrderReceiptDocument } from '../../ui/OrderReceiptDocument';
@@ -12,6 +12,8 @@ import {
   calculateOrderWideLogoQuantity 
 } from '../../../utils/embroideryPricingUtils';
 import { consolidateCommercialItems } from '../../../utils/orderItemConsolidation';
+import { OrderFinancialAdjustmentModal } from '../../modals/OrderFinancialAdjustmentModal';
+import { Order } from '../../../types';
 
 export interface ActiveOrdersListProps {
   orders: any[];
@@ -71,6 +73,7 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
   handleDeleteOrder
 }) => {
   const { isSuperAdmin } = useAuth();
+  const [adjustingFinancialOrder, setAdjustingFinancialOrder] = useState<Order | null>(null);
 
   const activeOrders = orders.filter(o => 
     getDocType(o) === 'ORDEN' && 
@@ -194,6 +197,17 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
                 </div>
               </div>
 
+              {/* Herramienta de Ajuste Financiero - STRICT ACCESS GUARD isSuperAdmin */}
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setAdjustingFinancialOrder(order)}
+                  className="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Pencil size={13} /> Ajustar Valores
+                </button>
+              )}
+
               {/* Botones de Acción */}
               <div className="order-actions-container flex flex-col gap-2 mt-4">
                 {pending > 0 && (
@@ -270,6 +284,13 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
           </div>
         );
       })}
+
+      {adjustingFinancialOrder && (
+        <OrderFinancialAdjustmentModal
+          order={adjustingFinancialOrder}
+          onClose={() => setAdjustingFinancialOrder(null)}
+        />
+      )}
     </>
   );
 };

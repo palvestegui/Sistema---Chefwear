@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Feature: SuperAdmin in-app financial adjustment tool on order cards (`OrderFinancialAdjustmentModal.tsx`, `ActiveOrdersList.tsx`, `HistoryView.tsx`)**:
+  - Implemented the `OrderFinancialAdjustmentModal` component (< 210 lines, strictly compliant with Rule 300 / Rule 500) enabling SuperAdmins to perform atomic adjustments to `totalPrice`, `manualDiscount`, and `amountCollected`.
+  - Added live dynamic calculation of `Saldo` with responsive feedback badge (`Cuenta Balanceada (Bs0.00)` in emerald green when zero).
+  - Enforced mandatory audit logging: all adjustments require an explicit justification note, permanently stamped into `order.timestamps` with format `"Ajuste financiero aplicado por SuperAdmin: [auditNote]"`.
+  - Integrated `[ ✏️ Ajustar Valores ]` action button under the financial summary section in both `ActiveOrdersList.tsx` and `HistoryView.tsx`.
+  - Guarded strictly by `isSuperAdmin` from `useAuth()`, ensuring standard sellers have zero visibility of this administrative utility.
+
 ### Fixed
 - **Taller Mobile Ergonomics: Overflowing Buttons & Mobile Cards (`ProductionView.tsx`, `OperationsView.tsx`)**:
   - `ProductionView.tsx`: Converted rigid action buttons flex container into a responsive grid (`grid grid-cols-1 sm:grid-cols-3 gap-2 w-full sm:w-auto`), preventing button overflow and text clipping on small mobile viewports.
