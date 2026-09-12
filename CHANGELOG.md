@@ -431,3 +431,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Generated an optimized 64x64 `favicon.png` with transparency and saved it securely to the `public/` directory, adhering to the < 25 KB budget constraint.
   - Asserted the correct injection of `<link rel="icon" type="image/png" href="/favicon.png" />` in `index.html`.
   - Maintained the official application title `Azafrán Chefwear - Order Management`.
+
+### Brand Identity: Transparent alpha background applied to favicon.png
+- **Description**: Optimized the application's favicon by stripping its opaque white background to render with a seamless alpha transparency channel.
+- **Implementation**: Manipulated image matrix byte data via native canvas buffers, clamping threshold-white pixels (`>240` RGB delta) to absolute `0` alpha. The file was securely overwritten into `public/favicon.png`.
