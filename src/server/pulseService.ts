@@ -1,4 +1,4 @@
-import { Firestore } from 'firebase-admin/firestore';
+import { Firestore, collection, getDocs, doc, updateDoc, deleteDoc, query, where, writeBatch, orderBy, limit, setDoc } from 'firebase/firestore';
 
 export interface OrderData {
   status?: string;
@@ -42,7 +42,7 @@ export const getDocType = (o: OrderData) =>
   o.docType || (o.status === 'Cotización' || o.status === 'Estimado' || o.id?.startsWith('COT-') ? 'COTIZACION' : 'ORDEN');
 
 export async function getSummaryData(db: Firestore) {
-  const ordersSnap = await db.collection('orders').get();
+  const ordersSnap = await getDocs(collection(db, 'orders'));
   let totalActiveOrders = 0;
   let totalQuotes = 0;
   let totalAmountCollected = 0;
@@ -68,7 +68,7 @@ export async function getSummaryData(db: Firestore) {
 }
 
 export async function getReportsData(db: Firestore) {
-  const ordersSnap = await db.collection('orders').get();
+  const ordersSnap = await getDocs(collection(db, 'orders'));
   let totalOrders = 0;
   let confirmedOrders = 0;
   let quoteCount = 0;
@@ -138,7 +138,7 @@ export async function getReportsData(db: Firestore) {
 }
 
 export async function getSellersData(db: Firestore) {
-  const ordersSnap = await db.collection('orders').get();
+  const ordersSnap = await getDocs(collection(db, 'orders'));
   const sellersMap = new Map<string, any>();
 
   ordersSnap.docs.forEach((doc) => {
@@ -177,7 +177,7 @@ export async function getSellersData(db: Firestore) {
 }
 
 export async function getBottlenecksData(db: Firestore) {
-  const ordersSnap = await db.collection('orders').get();
+  const ordersSnap = await getDocs(collection(db, 'orders'));
   const stalledMaterialOrders: any[] = [];
   const deliveryRiskOrders: any[] = [];
   const uncollectedBalanceOrders: any[] = [];
@@ -233,7 +233,7 @@ export async function getBottlenecksData(db: Firestore) {
 }
 
 export async function getOrdersData(db: Firestore) {
-  const ordersSnap = await db.collection('orders').get();
+  const ordersSnap = await getDocs(collection(db, 'orders'));
   const activeOrders: Record<string, unknown>[] = [];
   
   ordersSnap.docs.forEach((doc) => {
@@ -269,7 +269,7 @@ export async function getOrdersData(db: Firestore) {
 }
 
 export async function getQuotesData(db: Firestore) {
-  const ordersSnap = await db.collection('orders').get();
+  const ordersSnap = await getDocs(collection(db, 'orders'));
   const activeQuotes: Record<string, unknown>[] = [];
   
   ordersSnap.docs.forEach((doc) => {
@@ -297,8 +297,8 @@ export async function getQuotesData(db: Firestore) {
 }
 
 export async function getDirectoryData(db: Firestore) {
-  const contactsSnap = await db.collection('masterContacts').get();
-  const accountsSnap = await db.collection('clientAccounts').get();
+  const contactsSnap = await getDocs(collection(db, 'masterContacts'));
+  const accountsSnap = await getDocs(collection(db, 'clientAccounts'));
   
   const accountsMap = new Map<string, string>();
   accountsSnap.docs.forEach((doc) => {
@@ -324,7 +324,7 @@ export async function getDirectoryData(db: Firestore) {
 }
 
 export async function handleActionRevertOrder(db: Firestore, orderId: string) {
-  await db.collection('orders').doc(orderId).update({
+  await updateDoc(doc(db, 'orders', orderId), {
     status: 'Cotización',
     docType: 'quote',
     updatedAt: Date.now()
@@ -333,26 +333,26 @@ export async function handleActionRevertOrder(db: Firestore, orderId: string) {
 }
 
 export async function handleActionDeleteQuote(db: Firestore, quoteId: string) {
-  await db.collection('orders').doc(quoteId).delete();
+  await deleteDoc(doc(db, 'orders', quoteId));
   return { success: true, quoteId, message: "Quote removed successfully" };
 }
 
 export async function handleActionMergeContacts(db: Firestore, sourceContactId: string, targetContactId: string) {
-  const ordersSnap = await db.collection('orders').where('contactId', '==', sourceContactId).get();
-  const batch = db.batch();
+  const ordersSnap = await getDocs(query(collection(db, 'orders'), where('contactId', '==', sourceContactId)));
+  const batch = writeBatch(db);
 
   ordersSnap.docs.forEach(doc => {
     batch.update(doc.ref, { contactId: targetContactId, updatedAt: Date.now() });
   });
 
-  batch.delete(db.collection('masterContacts').doc(sourceContactId));
+  batch.delete(doc(db, 'masterContacts', sourceContactId));
 
   await batch.commit();
   return { success: true, sourceContactId, targetContactId, message: "Contacts merged successfully" };
 }
 
 export async function handleActionCreateQuote(db: Firestore, quoteData: any) {
-  const ordersSnap = await db.collection('orders').orderBy('id', 'desc').limit(1).get();
+  const ordersSnap = await getDocs(query(collection(db, 'orders'), orderBy('id', 'desc'), limit(1)));
   
   let nextId = '#ORD-00026';
   if (!ordersSnap.empty) {
@@ -387,8 +387,8 @@ export async function handleActionCreateQuote(db: Firestore, quoteData: any) {
     updatedAt: now,
   };
 
-  const newQuoteRef = db.collection('orders').doc();
-  await newQuoteRef.set(newQuote);
+  const newQuoteRef = doc(collection(db, 'orders'));
+  await setDoc(newQuoteRef, newQuote);
 
   return { success: true, quoteId: nextId, documentId: newQuoteRef.id, message: "Quote created successfully", data: newQuote };
 }

@@ -304,3 +304,9 @@ All notable changes and architectural updates to Azafrán Chefwear are documente
 
 ### Technical Debt / State
 - Zero hardcoding and strict type safety enforced across all new server modules.
+
+## [2026-09-12] - Server Boot Stabilization & Client SDK Migration
+- **Root Cause Addressed**: The Node backend server was previously attempting to use \`firebase-admin/firestore\` which resulted in fatal startup crashes and PERMISSION_DENIED errors when running under the platform's default ADC (Application Default Credentials).
+- **Architectural Shift**: Re-routed the backend to utilize the web SDK (\`firebase/firestore\`) in Node.js instead, using the existing client \`app\` instance from \`src/firebase.ts\`.
+- **Refactoring**: Completely rewrote \`src/server/pulseService.ts\` from the \`firebase-admin\` object-oriented \`db.collection()\` format to the modular \`firebase/firestore\` syntax (e.g. \`getDocs(collection(...))\`). 
+- **Resilience**: Injected global \`uncaughtException\` and \`unhandledRejection\` listeners into \`server.ts\` to prevent silent container crashing and log robust diagnostics.

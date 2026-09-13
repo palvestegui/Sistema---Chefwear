@@ -1,3 +1,11 @@
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 import { setupMcpRoutes } from './src/server/mcp';
 import {
   getSummaryData,
@@ -15,8 +23,8 @@ import {
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore, DocumentData } from 'firebase-admin/firestore';
+import { app as firebaseApp } from './src/firebase';
+import { getFirestore, DocumentData } from 'firebase/firestore';
 import fs from 'fs';
 
 interface OrderItem {
@@ -82,10 +90,7 @@ async function startServer() {
     console.warn("Could not load firebase-applet-config.json");
   }
 
-  if (!getApps().length && firebaseConfig && typeof firebaseConfig.projectId === 'string') {
-    initializeApp({ projectId: firebaseConfig.projectId });
-  }
-
+  
   const PULSE_KEY = process.env.AZAFRAN_PULSE_KEY || 'AZAFRAN_PULSE_2026';
 
   app.get('/api/pulse', async (req, res) => {
@@ -101,7 +106,7 @@ async function startServer() {
     }
 
     try {
-      const db = getFirestore('chefwear-db');
+      const db = getFirestore(firebaseApp, 'chefwear-db');
       const entity = req.query.entity as string;
 
       if (entity === 'summary') {
@@ -160,7 +165,7 @@ async function startServer() {
     }
 
     const actionType = req.params.actionType;
-    const db = getFirestore('chefwear-db');
+    const db = getFirestore(firebaseApp, 'chefwear-db');
 
     try {
       if (actionType === 'revert-order') {
