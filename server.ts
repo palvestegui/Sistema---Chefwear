@@ -7,7 +7,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 import { setupMcpRoutes } from './src/server/mcp';
-import type { DocumentData } from 'firebase/firestore';
+import type { DocumentData } from 'firebase-admin/firestore';
 import {
   getSummaryData,
   getReportsData,

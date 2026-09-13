@@ -1,5 +1,4 @@
-import { db } from '../firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, where, writeBatch, orderBy, limit, setDoc } from 'firebase/firestore';
+import { db } from './adminDb';
 
 export interface OrderData {
   status?: string;
@@ -43,7 +42,7 @@ export const getDocType = (o: OrderData) =>
   o.docType || (o.status === 'Cotización' || o.status === 'Estimado' || o.id?.startsWith('COT-') ? 'COTIZACION' : 'ORDEN');
 
 export async function getSummaryData() {
-  const ordersSnap = await getDocs(collection(db, 'orders'));
+  const ordersSnap = await db.collection('orders').get();
   let totalActiveOrders = 0;
   let totalQuotes = 0;
   let totalAmountCollected = 0;
@@ -69,7 +68,7 @@ export async function getSummaryData() {
 }
 
 export async function getReportsData() {
-  const ordersSnap = await getDocs(collection(db, 'orders'));
+  const ordersSnap = await db.collection('orders').get();
   let totalOrders = 0;
   let confirmedOrders = 0;
   let quoteCount = 0;
@@ -139,7 +138,7 @@ export async function getReportsData() {
 }
 
 export async function getSellersData() {
-  const ordersSnap = await getDocs(collection(db, 'orders'));
+  const ordersSnap = await db.collection('orders').get();
   const sellersMap = new Map<string, any>();
 
   ordersSnap.docs.forEach((doc) => {
@@ -178,7 +177,7 @@ export async function getSellersData() {
 }
 
 export async function getBottlenecksData() {
-  const ordersSnap = await getDocs(collection(db, 'orders'));
+  const ordersSnap = await db.collection('orders').get();
   const stalledMaterialOrders: any[] = [];
   const deliveryRiskOrders: any[] = [];
   const uncollectedBalanceOrders: any[] = [];
@@ -234,7 +233,7 @@ export async function getBottlenecksData() {
 }
 
 export async function getOrdersData() {
-  const ordersSnap = await getDocs(collection(db, 'orders'));
+  const ordersSnap = await db.collection('orders').get();
   const activeOrders: Record<string, unknown>[] = [];
   
   ordersSnap.docs.forEach((doc) => {
@@ -270,7 +269,7 @@ export async function getOrdersData() {
 }
 
 export async function getQuotesData() {
-  const ordersSnap = await getDocs(collection(db, 'orders'));
+  const ordersSnap = await db.collection('orders').get();
   const activeQuotes: Record<string, unknown>[] = [];
   
   ordersSnap.docs.forEach((doc) => {
@@ -298,8 +297,8 @@ export async function getQuotesData() {
 }
 
 export async function getDirectoryData() {
-  const contactsSnap = await getDocs(collection(db, 'masterContacts'));
-  const accountsSnap = await getDocs(collection(db, 'clientAccounts'));
+  const contactsSnap = await db.collection('masterContacts').get();
+  const accountsSnap = await db.collection('clientAccounts').get();
   
   const accountsMap = new Map<string, string>();
   accountsSnap.docs.forEach((doc) => {
@@ -325,7 +324,7 @@ export async function getDirectoryData() {
 }
 
 export async function handleActionRevertOrder(orderId: string) {
-  await updateDoc(doc(db, 'orders', orderId), {
+  await db.collection('orders').doc(orderId).update({
     status: 'Cotización',
     docType: 'quote',
     updatedAt: Date.now()
@@ -334,26 +333,26 @@ export async function handleActionRevertOrder(orderId: string) {
 }
 
 export async function handleActionDeleteQuote(quoteId: string) {
-  await deleteDoc(doc(db, 'orders', quoteId));
+  await db.collection('orders').doc(quoteId).delete();
   return { success: true, quoteId, message: "Quote removed successfully" };
 }
 
 export async function handleActionMergeContacts(sourceContactId: string, targetContactId: string) {
-  const ordersSnap = await getDocs(query(collection(db, 'orders'), where('contactId', '==', sourceContactId)));
-  const batch = writeBatch(db);
+  const ordersSnap = await db.collection('orders').where('contactId', '==', sourceContactId).get();
+  const batch = db.batch();
 
   ordersSnap.docs.forEach(doc => {
     batch.update(doc.ref, { contactId: targetContactId, updatedAt: Date.now() });
   });
 
-  batch.delete(doc(db, 'masterContacts', sourceContactId));
+  batch.delete(db.collection('masterContacts').doc(sourceContactId));
 
   await batch.commit();
   return { success: true, sourceContactId, targetContactId, message: "Contacts merged successfully" };
 }
 
 export async function handleActionCreateQuote(quoteData: any) {
-  const ordersSnap = await getDocs(query(collection(db, 'orders'), orderBy('id', 'desc'), limit(1)));
+  const ordersSnap = await db.collection('orders').orderBy('id', 'desc').limit(1).get();
   
   let nextId = '#ORD-00026';
   if (!ordersSnap.empty) {
@@ -370,10 +369,8 @@ export async function handleActionCreateQuote(quoteData: any) {
   const totalPrice = Number(quoteData.totalPrice) || 0;
 
   const newQuote = {
+    orderId: nextId,
     id: nextId,
-    status: 'Cotización',
-    docType: 'quote',
-    category: 'Cotizaciones',
     customer: quoteData.customer,
     phone: quoteData.phone || '',
     email: quoteData.email || '',
@@ -382,14 +379,17 @@ export async function handleActionCreateQuote(quoteData: any) {
     totalPrice: totalPrice,
     amountCollected: 0,
     balance: totalPrice,
+    status: 'Cotización',
+    docType: 'quote',
+    category: 'Cotizaciones',
     notes: quoteData.notes || '',
     sellerName: quoteData.sellerName || 'Pablo Alvestegui',
     createdAt: now,
     updatedAt: now,
   };
 
-  const newQuoteRef = doc(collection(db, 'orders'));
-  await setDoc(newQuoteRef, newQuote);
+  const newQuoteRef = db.collection('orders').doc();
+  await newQuoteRef.set(newQuote);
 
   return { success: true, quoteId: nextId, documentId: newQuoteRef.id, message: "Quote created successfully", data: newQuote };
 }
