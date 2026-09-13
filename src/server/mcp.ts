@@ -1,5 +1,3 @@
-import { getFirestore } from 'firebase/firestore';
-import { app as firebaseApp } from '../firebase';
 import type { Express } from 'express';
 import {
   getSummaryData,
@@ -180,32 +178,31 @@ export function setupMcpRoutes(app: Express, PULSE_KEY: string | undefined, fire
           res.json({ jsonrpc: "2.0", id, error: { code: -32603, message: 'Firebase config missing' } });
           return;
         }
-        const db = getFirestore(firebaseApp, 'chefwear-db');
-
+        
         let toolExecutionResult: any = null;
 
         if (toolName === "azafran_get_summary") {
-          toolExecutionResult = await getSummaryData(db);
+          toolExecutionResult = await getSummaryData();
         } else if (toolName === "azafran_get_bottlenecks") {
-          toolExecutionResult = await getBottlenecksData(db);
+          toolExecutionResult = await getBottlenecksData();
         } else if (toolName === "azafran_get_reports") {
-          toolExecutionResult = await getReportsData(db);
+          toolExecutionResult = await getReportsData();
         } else if (toolName === "azafran_get_sellers") {
-          toolExecutionResult = await getSellersData(db);
+          toolExecutionResult = await getSellersData();
         } else if (toolName === "azafran_get_orders") {
-          toolExecutionResult = await getOrdersData(db);
+          toolExecutionResult = await getOrdersData();
         } else if (toolName === "azafran_get_quotes") {
-          toolExecutionResult = await getQuotesData(db);
+          toolExecutionResult = await getQuotesData();
         } else if (toolName === "azafran_get_directory") {
-          toolExecutionResult = await getDirectoryData(db);
+          toolExecutionResult = await getDirectoryData();
         } else if (toolName === "azafran_create_quote") {
-          toolExecutionResult = await handleActionCreateQuote(db, args);
+          toolExecutionResult = await handleActionCreateQuote(args);
         } else if (toolName === "azafran_revert_order") {
-          toolExecutionResult = await handleActionRevertOrder(db, args.orderId);
+          toolExecutionResult = await handleActionRevertOrder(args.orderId);
         } else if (toolName === "azafran_delete_quote") {
-          toolExecutionResult = await handleActionDeleteQuote(db, args.quoteId);
+          toolExecutionResult = await handleActionDeleteQuote(args.quoteId);
         } else if (toolName === "azafran_merge_contacts") {
-          toolExecutionResult = await handleActionMergeContacts(db, args.sourceContactId, args.targetContactId);
+          toolExecutionResult = await handleActionMergeContacts(args.sourceContactId, args.targetContactId);
         } else {
           res.json({ jsonrpc: "2.0", id, error: { code: -32601, message: "Tool not found" } });
           return;

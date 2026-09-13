@@ -7,6 +7,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 import { setupMcpRoutes } from './src/server/mcp';
+import type { DocumentData } from 'firebase/firestore';
 import {
   getSummaryData,
   getReportsData,
@@ -23,8 +24,6 @@ import {
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { app as firebaseApp } from './src/firebase';
-import { getFirestore, DocumentData } from 'firebase/firestore';
 import fs from 'fs';
 
 interface OrderItem {
@@ -106,41 +105,40 @@ async function startServer() {
     }
 
     try {
-      const db = getFirestore(firebaseApp, 'chefwear-db');
-      const entity = req.query.entity as string;
+            const entity = req.query.entity as string;
 
       if (entity === 'summary') {
-        const data = await getSummaryData(db);
+        const data = await getSummaryData();
         res.json(data);
         return;
       }
       if (entity === 'reports') {
-        const data = await getReportsData(db);
+        const data = await getReportsData();
         res.json(data);
         return;
       }
       if (entity === 'sellers') {
-        const data = await getSellersData(db);
+        const data = await getSellersData();
         res.json(data);
         return;
       }
       if (entity === 'bottlenecks') {
-        const data = await getBottlenecksData(db);
+        const data = await getBottlenecksData();
         res.json(data);
         return;
       }
       if (entity === 'orders') {
-        const data = await getOrdersData(db);
+        const data = await getOrdersData();
         res.json(data);
         return;
       }
       if (entity === 'quotes') {
-        const data = await getQuotesData(db);
+        const data = await getQuotesData();
         res.json(data);
         return;
       }
       if (entity === 'directory') {
-        const data = await getDirectoryData(db);
+        const data = await getDirectoryData();
         res.json(data);
         return;
       }
@@ -165,8 +163,7 @@ async function startServer() {
     }
 
     const actionType = req.params.actionType;
-    const db = getFirestore(firebaseApp, 'chefwear-db');
-
+    
     try {
       if (actionType === 'revert-order') {
         const { orderId } = req.body;
@@ -174,7 +171,7 @@ async function startServer() {
           res.status(400).json({ error: 'orderId is required' });
           return;
         }
-        const data = await handleActionRevertOrder(db, orderId);
+        const data = await handleActionRevertOrder(orderId);
         res.json(data);
         return;
       }
@@ -185,7 +182,7 @@ async function startServer() {
           res.status(400).json({ error: 'quoteId is required' });
           return;
         }
-        const data = await handleActionDeleteQuote(db, quoteId);
+        const data = await handleActionDeleteQuote(quoteId);
         res.json(data);
         return;
       }
@@ -196,7 +193,7 @@ async function startServer() {
           res.status(400).json({ error: 'sourceContactId and targetContactId are required' });
           return;
         }
-        const data = await handleActionMergeContacts(db, sourceContactId, targetContactId);
+        const data = await handleActionMergeContacts(sourceContactId, targetContactId);
         res.json(data);
         return;
       }
@@ -207,7 +204,7 @@ async function startServer() {
           res.status(400).json({ error: 'customer and items are required' });
           return;
         }
-        const data = await handleActionCreateQuote(db, quoteData);
+        const data = await handleActionCreateQuote(quoteData);
         res.json(data);
         return;
       }

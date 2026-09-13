@@ -1,4 +1,5 @@
-import { Firestore, collection, getDocs, doc, updateDoc, deleteDoc, query, where, writeBatch, orderBy, limit, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, where, writeBatch, orderBy, limit, setDoc } from 'firebase/firestore';
 
 export interface OrderData {
   status?: string;
@@ -41,7 +42,7 @@ export interface AccountData {
 export const getDocType = (o: OrderData) => 
   o.docType || (o.status === 'Cotización' || o.status === 'Estimado' || o.id?.startsWith('COT-') ? 'COTIZACION' : 'ORDEN');
 
-export async function getSummaryData(db: Firestore) {
+export async function getSummaryData() {
   const ordersSnap = await getDocs(collection(db, 'orders'));
   let totalActiveOrders = 0;
   let totalQuotes = 0;
@@ -67,7 +68,7 @@ export async function getSummaryData(db: Firestore) {
   return { totalActiveOrders, totalQuotes, totalAmountCollected, totalPendingBalance, timestamp: Date.now() };
 }
 
-export async function getReportsData(db: Firestore) {
+export async function getReportsData() {
   const ordersSnap = await getDocs(collection(db, 'orders'));
   let totalOrders = 0;
   let confirmedOrders = 0;
@@ -137,7 +138,7 @@ export async function getReportsData(db: Firestore) {
   };
 }
 
-export async function getSellersData(db: Firestore) {
+export async function getSellersData() {
   const ordersSnap = await getDocs(collection(db, 'orders'));
   const sellersMap = new Map<string, any>();
 
@@ -176,7 +177,7 @@ export async function getSellersData(db: Firestore) {
   });
 }
 
-export async function getBottlenecksData(db: Firestore) {
+export async function getBottlenecksData() {
   const ordersSnap = await getDocs(collection(db, 'orders'));
   const stalledMaterialOrders: any[] = [];
   const deliveryRiskOrders: any[] = [];
@@ -232,7 +233,7 @@ export async function getBottlenecksData(db: Firestore) {
   };
 }
 
-export async function getOrdersData(db: Firestore) {
+export async function getOrdersData() {
   const ordersSnap = await getDocs(collection(db, 'orders'));
   const activeOrders: Record<string, unknown>[] = [];
   
@@ -268,7 +269,7 @@ export async function getOrdersData(db: Firestore) {
   return activeOrders;
 }
 
-export async function getQuotesData(db: Firestore) {
+export async function getQuotesData() {
   const ordersSnap = await getDocs(collection(db, 'orders'));
   const activeQuotes: Record<string, unknown>[] = [];
   
@@ -296,7 +297,7 @@ export async function getQuotesData(db: Firestore) {
   return activeQuotes;
 }
 
-export async function getDirectoryData(db: Firestore) {
+export async function getDirectoryData() {
   const contactsSnap = await getDocs(collection(db, 'masterContacts'));
   const accountsSnap = await getDocs(collection(db, 'clientAccounts'));
   
@@ -323,7 +324,7 @@ export async function getDirectoryData(db: Firestore) {
   return directory;
 }
 
-export async function handleActionRevertOrder(db: Firestore, orderId: string) {
+export async function handleActionRevertOrder(orderId: string) {
   await updateDoc(doc(db, 'orders', orderId), {
     status: 'Cotización',
     docType: 'quote',
@@ -332,12 +333,12 @@ export async function handleActionRevertOrder(db: Firestore, orderId: string) {
   return { success: true, orderId, message: "Order successfully reverted to quotation" };
 }
 
-export async function handleActionDeleteQuote(db: Firestore, quoteId: string) {
+export async function handleActionDeleteQuote(quoteId: string) {
   await deleteDoc(doc(db, 'orders', quoteId));
   return { success: true, quoteId, message: "Quote removed successfully" };
 }
 
-export async function handleActionMergeContacts(db: Firestore, sourceContactId: string, targetContactId: string) {
+export async function handleActionMergeContacts(sourceContactId: string, targetContactId: string) {
   const ordersSnap = await getDocs(query(collection(db, 'orders'), where('contactId', '==', sourceContactId)));
   const batch = writeBatch(db);
 
@@ -351,7 +352,7 @@ export async function handleActionMergeContacts(db: Firestore, sourceContactId: 
   return { success: true, sourceContactId, targetContactId, message: "Contacts merged successfully" };
 }
 
-export async function handleActionCreateQuote(db: Firestore, quoteData: any) {
+export async function handleActionCreateQuote(quoteData: any) {
   const ordersSnap = await getDocs(query(collection(db, 'orders'), orderBy('id', 'desc'), limit(1)));
   
   let nextId = '#ORD-00026';

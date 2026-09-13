@@ -310,3 +310,8 @@ All notable changes and architectural updates to Azafrán Chefwear are documente
 - **Architectural Shift**: Re-routed the backend to utilize the web SDK (\`firebase/firestore\`) in Node.js instead, using the existing client \`app\` instance from \`src/firebase.ts\`.
 - **Refactoring**: Completely rewrote \`src/server/pulseService.ts\` from the \`firebase-admin\` object-oriented \`db.collection()\` format to the modular \`firebase/firestore\` syntax (e.g. \`getDocs(collection(...))\`). 
 - **Resilience**: Injected global \`uncaughtException\` and \`unhandledRejection\` listeners into \`server.ts\` to prevent silent container crashing and log robust diagnostics.
+
+## [2026-09-12] - Server DB Connection Refactoring
+- **Architectural Adjustment**: Refactored `server.ts`, `src/server/mcp.ts`, and `src/server/pulseService.ts` to directly import the unified `db` instance from `src/firebase.ts`. This eliminates redundant connection initialization and guarantees the backend uses the exact same `firestoreDatabaseId` configuration from `firebase-applet-config.json` that the frontend uses.
+- **Dependency Injection Removal**: Stripped the `db: Firestore` parameter from all `pulseService` functions because they now internally rely on the singleton `db` import, leading to cleaner interfaces.
+- **Verification**: Built `tsc`, ran `npm run build`, and cleanly restarted the backend. The API endpoints immediately connect to the intended database configuration without hardcoded IDs.
