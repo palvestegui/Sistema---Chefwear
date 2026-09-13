@@ -62,6 +62,27 @@
 
 All notable changes and architectural updates to Azafrán Chefwear are documented here.
 
+## [Executive Intelligence and Action Engine (Socket 3)] - 2026-09-12
+### Added / Implemented
+- **Expanded GET `/api/pulse` Endpoint (`server.ts`)**:
+  - Implemented 3 new operational intelligence entities for agent read-only reporting:
+    - `entity=reports`: Computes total confirmed revenue, pending balances, collection rates, average ticket size, and aggregates a leaderboard of top-selling garments and revenue by category/fabric.
+    - `entity=sellers`: Aggregates active sales metrics grouped by assigned seller (conversion rate, total quotes, confirmed orders, generated revenue).
+    - `entity=bottlenecks`: Scans all active orders to detect operational friction (stalled material readiness > 48h, delivery risk > 15 days, uncollected balances post-production, and data anomalies like overcollection or negative balances).
+  - Improved data normalization for existing `orders` and `quotes` entities with robust resolution for `customer` names and `itemsSummary` structures.
+
+- **Authenticated Action Endpoints (`server.ts`)**:
+  - Implemented 4 new POST endpoints under `/api/action/*`, strictly protected by the `x-pulse-key` verification mechanism.
+  - `POST /api/action/revert-order`: Updates a specific order's status to 'Cotización' and document type to 'quote'.
+  - `POST /api/action/delete-quote`: Locates and permanently destroys a quotation document from Firestore.
+  - `POST /api/action/merge-contacts`: Atomically reassigns all orders and quotations from a duplicate contact to a master contact via batch write, then eliminates the duplicate.
+  - `POST /api/action/create-quote`: Instantiates a new quotation document directly into Firestore.
+  
+### Architecture & Compliance
+- Integrated `express.json()` middleware into the Express application.
+- Ensured strict 200/400/401/500 HTTP response codes and error handling blocks across all custom routes.
+- Zero TypeScript diagnostics (`tsc --noEmit` passed cleanly) and production build verified via `compile_applet`.
+
 ## [SuperAdmin Modo Vista (Impersonation Selector)] - 2026-09-12
 ### Added / Implemented
 - **SuperAdmin "Modo Vista" Impersonation Selector in TopBar (`MainLayout.tsx`)**:
