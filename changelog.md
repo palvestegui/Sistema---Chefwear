@@ -1,4 +1,10 @@
 ## [Unreleased]
+### Added
+- Implemented secure server-side \`Pulse\` Read-Only API endpoint (\`/api/pulse\`) for AI assistant auditing and metric retrieval.
+- Converted application architecture to Full-Stack (Express + Vite) to support isolated, zero-hardcoding backend execution in Cloud Run.
+- Integrated \`firebase-admin\` in \`server.ts\` for backend Firestore execution, bypassing client \`firestore.rules\` strict boundaries safely.
+
+
 ### Fixed
 - Fixed CRM Directorio rendering 'PARTICULAR' indefinitely for specific contact roles (such as 'ESTUDIANTE' or 'DOCENTE'). 
 - Synchronized \`EditContactModal.tsx\` to bind directly to the exact computed role dropdown value before saving to Firestore, bypassing static state desynchronization.
