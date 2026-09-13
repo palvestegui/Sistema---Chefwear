@@ -352,13 +352,43 @@ export async function handleActionMergeContacts(db: Firestore, sourceContactId: 
 }
 
 export async function handleActionCreateQuote(db: Firestore, quoteData: any) {
-  const newQuoteRef = db.collection('orders').doc();
-  await newQuoteRef.set({
-    ...quoteData,
+  const ordersSnap = await db.collection('orders').orderBy('id', 'desc').limit(1).get();
+  
+  let nextId = '#ORD-00026';
+  if (!ordersSnap.empty) {
+    const lastId = ordersSnap.docs[0].data().id;
+    if (lastId && typeof lastId === 'string' && lastId.startsWith('#ORD-')) {
+      const numPart = parseInt(lastId.substring(5), 10);
+      if (!isNaN(numPart)) {
+        nextId = `#ORD-${String(numPart + 1).padStart(5, '0')}`;
+      }
+    }
+  }
+
+  const now = Date.now();
+  const totalPrice = Number(quoteData.totalPrice) || 0;
+
+  const newQuote = {
+    id: nextId,
     status: 'Cotización',
     docType: 'quote',
-    createdAt: Date.now(),
-    id: newQuoteRef.id
-  });
-  return { success: true, quoteId: newQuoteRef.id, message: "Quote created successfully" };
+    category: 'Cotizaciones',
+    customer: quoteData.customer,
+    phone: quoteData.phone || '',
+    email: quoteData.email || '',
+    companyName: quoteData.companyName || 'Cliente Particular',
+    items: quoteData.items || [],
+    totalPrice: totalPrice,
+    amountCollected: 0,
+    balance: totalPrice,
+    notes: quoteData.notes || '',
+    sellerName: quoteData.sellerName || 'Pablo Alvestegui',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const newQuoteRef = db.collection('orders').doc();
+  await newQuoteRef.set(newQuote);
+
+  return { success: true, quoteId: nextId, documentId: newQuoteRef.id, message: "Quote created successfully", data: newQuote };
 }

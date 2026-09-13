@@ -95,13 +95,13 @@ async function startServer() {
       return;
     }
 
-    if (!firebaseConfig || !firebaseConfig.firestoreDatabaseId) {
+    if (!firebaseConfig) {
       res.status(500).json({ error: 'Firebase configuration not found on server' });
       return;
     }
 
     try {
-      const db = getFirestore(firebaseConfig.firestoreDatabaseId);
+      const db = getFirestore('chefwear-db');
       const entity = req.query.entity as string;
 
       if (entity === 'summary') {
@@ -154,13 +154,13 @@ async function startServer() {
       return;
     }
 
-    if (!firebaseConfig || !firebaseConfig.firestoreDatabaseId) {
+    if (!firebaseConfig) {
       res.status(500).json({ error: 'Firebase configuration not found on server' });
       return;
     }
 
     const actionType = req.params.actionType;
-    const db = getFirestore(firebaseConfig.firestoreDatabaseId);
+    const db = getFirestore('chefwear-db');
 
     try {
       if (actionType === 'revert-order') {

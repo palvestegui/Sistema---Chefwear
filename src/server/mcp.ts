@@ -175,11 +175,11 @@ export function setupMcpRoutes(app: Express, PULSE_KEY: string | undefined, fire
         const toolName = params?.name;
         const args = params?.arguments || {};
         
-        if (!firebaseConfig || !firebaseConfig.firestoreDatabaseId) {
+        if (!firebaseConfig) {
           res.json({ jsonrpc: "2.0", id, error: { code: -32603, message: 'Firebase config missing' } });
           return;
         }
-        const db = getFirestore(firebaseConfig.firestoreDatabaseId);
+        const db = getFirestore('chefwear-db');
 
         let toolExecutionResult: any = null;
 
