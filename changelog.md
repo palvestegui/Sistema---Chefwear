@@ -1,6 +1,114 @@
+## [Unreleased]
+### Fixed
+- Migrated Authentication Provider from \`signInWithRedirect\` to \`signInWithPopup\` in \`AuthContext.tsx\` to resolve cross-domain mobile browser session drops.
+- Ensured immediate user profile resolution persists via the \`onAuthStateChanged\` observer reacting to the synchronous popup resolution.
+
+
+### Fixed
+- Fixed Revert Schema in ActiveOrdersList.tsx by explicitly asserting docType: COTIZACION and status: Cotización rather than deleting the field.
+- Fixed the Hard-Delete execution target in QuotesList.tsx by guaranteeing the target document ID resolves correctly via (order as any).id || (order as any).orderId.
+
+### Added
+- Integrated a global DOM-based Toast notification engine (src/utils/toastUtils.ts) and connected it to primary conversion events to deliver affirmative feedback.
+
+
+### Fixed
+- Fixed multi-quote creation loop by passing 'isSubmitting' state to 'OrderSummaryAndCheckout' and disabling the submission button during dispatch.
+- Restored the 'Revertir a Cotización' action for actual Super Admins in ActiveOrdersList.tsx, correctly resetting the order status to Estimado and stripping out production status flags.
+
+### Added
+- Added an 'Eliminar (Admin)' hard-delete button to QuotesList.tsx exclusively for actual Super Admins, allowing direct purging of test quotes from Firestore via deleteDoc.
+
+## [Unreleased]
+### Changed
+- Refactored `GarmentSizingSection.tsx` to restore full interactivity for standard size selection across all modes (including UDI).
+- Modified `GarmentConfigurator.tsx` to strictly validate the 8 Filipina measurements only when the garment sizing type is explicitly set to 'A Medida' (Custom) AND the mode is 'Orden Activa' (bypassing validation for 'Cotización' mode and standard sizing).
+- Ensured 100% interactive write capabilities for Ventas role during Order Creation and Quotations, restricting `isWriteDisabled` strictly to Taller/Workshop views.
+
 # Changelog
 
 All notable changes and architectural updates to Azafrán Chefwear are documented here.
+
+## [SuperAdmin Modo Vista (Impersonation Selector)] - 2026-09-12
+### Added / Implemented
+- **SuperAdmin "Modo Vista" Impersonation Selector in TopBar (`MainLayout.tsx`)**:
+  - Embedded a discreet top-right selector `[ 👁️ Vista: Admin ▾ ]` in the TopBar (visible on both mobile and desktop), strictly guarded by `isActualSuperAdmin || isSuperAdmin`.
+  - Configured 4 impersonation options:
+    - `'Administrador (Full access)'`: Restores full SuperAdmin visibility, tabs, and permissions.
+    - `'Ventas (Matías)'`: Enforces Ventas role restrictions (hides Ajustes, Reportes, and Directorio; enforces 8 Filipina measurements; locks workshop action triggers in Operations, Production, and Logistics).
+    - `'Operaciones (León)'`: Switches perspective to Operations management (suppresses sales pricing modifications and roles admin).
+    - `'Producción (Doris)'`: Switches perspective to Workshop Production management.
+- **Purely Local & Safe State Persistence (`AuthContext.tsx`)**:
+  - Added `activeViewRole` state initialized from `sessionStorage` (`azafran_active_view_role`).
+  - Stored strictly in React state and `sessionStorage`; NEVER written to Firestore, completely eliminating any risk of admin self-lockout or database pollution.
+  - Computed `effectiveUserProfile`, `effectiveIsAdmin`, and `effectiveIsSuperAdmin` dynamically from the raw auth profile and `activeViewRole`.
+  - Preserved `isActualSuperAdmin` so SuperAdmin can toggle back to `'admin'` at any time.
+- **UI Guarding & Workshop Trigger Locking (`App.tsx`, `SidebarNav.tsx`)**:
+  - `SidebarNav.tsx`: Dynamically hides Directorio, Reportes, and Ajustes navigation items when the effective role is `VENTAS`.
+  - `App.tsx`: Conditionally unmounts Directorio (`clientes`), Reportes (`reportes`), and Ajustes (`ajustes`) views when effective role is `VENTAS`.
+  - `App.tsx`: Updated `isWriteDisabled` to lock all workshop triggers (`operaciones`, `produccion`, `logistica`) when effective role is `VENTAS`.
+  - `MainLayout.tsx`: Automatically redirects to the `ventas` tab if the user switches to `'Ventas (Matías)'` while currently viewing a restricted view (`ajustes`, `reportes`, `clientes`).
+- **Enforced 8 Filipina Measurements for Ventas (`GarmentConfigurator.tsx`, `GarmentSizingSection.tsx`)**:
+  - `GarmentConfigurator.tsx`: Validates that all 8 required measurements for Filipina (`pecho`, `cintura`, `cadera`, `espalda`, `manga`, `largo`, `hombro`, `cuello`) are completed when adding an active order item in Ventas role.
+  - `GarmentSizingSection.tsx`: Displays an informative status badge `Rol Ventas (Matías) · 8 Medidas Obligatorias` when custom sizing is active for a Filipina.
+
+### Architecture & Compliance
+- Strict Rule 300 / Rule 500 compliance:
+  - `src/contexts/AuthContext.tsx`: 289 lines (< 300 limit)
+  - `src/components/layout/MainLayout.tsx`: 272 lines (< 500 limit)
+  - `src/components/layout/SidebarNav.tsx`: 464 lines (< 500 limit)
+  - `src/App.tsx`: 460 lines (< 500 limit)
+  - `src/components/modals/newOrder/GarmentConfigurator.tsx`: 421 lines (< 500 limit)
+  - `src/components/modals/newOrder/GarmentSizingSection.tsx`: 184 lines (< 500 limit)
+  - `src/types/index.ts`: 273 lines (< 300 limit)
+- Type Safety & Verification: `lint_applet` passed cleanly (0 errors), `tsc --noEmit` exit code 0, and `compile_applet` succeeded.
+
+## [Fix Pre-Provisioned User UID Binding & Firestore Security Rules] - 2026-09-12
+### Fixed / Implemented
+- **Pre-Provisioned User UID Binding via Query in AuthContext (`AuthContext.tsx`)**:
+  - Replaced direct email-keyed document lookup with a query on `users` where `email == user.email` (matching the Firestore security rule filter).
+  - When an authenticated user logs in without an existing UID document, the system queries for their approved pre-provisioned record (`status == 'APPROVED'`).
+  - Utilized `writeBatch` to execute an atomic batch write: creates `users/{user.uid}` with designated roles, permissions, and metadata, and deletes the temporary email-keyed placeholder document in a single commit.
+  - Added safe try/catch and snapshot error callbacks to prevent unhandled rejections or login loops.
+- **Firestore Security Rules Update (`firestore.rules`)**:
+  - Configured `users/{userId}` security rules permitting authenticated users to:
+    - Read and delete a document in `users` if `resource.data.email == request.auth.token.email`.
+    - Create their own document where `request.auth.uid == userId` and `request.resource.data.email == request.auth.token.email`.
+  - Maintained role-based administrative permissions for SuperAdmin and account managers.
+  - Deployed updated rules to Firebase via `deploy_firebase`.
+
+### Architecture & Compliance
+- Strict Rule 300 / Rule 500 compliance:
+  - `src/contexts/AuthContext.tsx`: 202 lines (< 300 limit)
+  - `firestore.rules`: 51 lines
+- Type Safety & Verification: `lint_applet` passed cleanly (0 errors), `tsc --noEmit` exit code 0, and `compile_applet` succeeded.
+
+## [Pre-Provision User Accounts & Roles & Usuarios Integration] - 2026-09-12
+### Added / Implemented
+- **SuperAdmin-Only '+ Agregar Usuario' Toolbar Action (`UsersManagementSection.tsx`)**:
+  - Embedded `[ + Agregar Usuario ]` action button directly in the Roles & Usuarios management toolbar, guarded strictly by `isSuperAdmin` from `useAuth()`.
+- **Pre-Provision User Modal Component (`AddUserModal.tsx`)**:
+  - Developed compact, accessible modal (< 240 lines, Rule 500 compliant) for SuperAdmin account pre-provisioning.
+  - Implemented standard RFC 5322 regex validation on the email input with live blur checks and duplicate registration detection.
+  - Provided role selection across 5 designated roles: `'ventas'`, `'operaciones'`, `'produccion'`, `'logistica'`, `'admin'` with dynamic preview of default permissions.
+  - Atomic write to the Firestore `users` collection with `status: 'APPROVED'`, `preProvisioned: true`, and corresponding permission flags.
+- **Centralized Role Permissions Engine & RFC 5322 Validator (`userRoleUtils.ts`)**:
+  - Defined `ASSIGNED_ROLE_CONFIG`, `validateRFC5322Email`, and `getDefaultPermissionsForRole` in `src/utils/userRoleUtils.ts` (< 90 lines, Rule 300 compliant), adhering to Zero Hardcoding Policy.
+- **Seamless Google OAuth Session Binding (`AuthContext.tsx`)**:
+  - Upgraded `onAuthStateChanged` handler in `AuthContext.tsx` (< 190 lines, Rule 300 compliant).
+  - When a pre-provisioned user signs in via Google OAuth, the system automatically detects their email record, copies all pre-provisioned roles, permissions, and metadata into their active UID document, deletes the temporary placeholder doc, and immediately authorizes their session with zero manual intervention required.
+- **Visual Feedback & Badges**:
+  - Rendered `PRE-PROVISIONADO` badge in `UsersManagementSection` user cards to distinguish pre-registered users prior to first login.
+
+### Architecture & Compliance
+- Strict Rule 300 / Rule 500 compliance:
+  - `src/utils/userRoleUtils.ts`: 88 lines (< 300 limit)
+  - `src/types/index.ts`: 272 lines (< 300 limit)
+  - `src/components/modals/AddUserModal.tsx`: 236 lines (< 500 limit)
+  - `src/contexts/AuthContext.tsx`: 184 lines (< 300 limit)
+  - `src/contexts/DataContext.tsx`: 115 lines (< 300 limit)
+  - `src/components/views/settings/UsersManagementSection.tsx`: 232 lines (< 500 limit)
+- Type Safety & Verification: `lint_applet` passed cleanly (0 errors), `tsc --noEmit` exit code 0, and `compile_applet` succeeded.
 
 ## [Fix Parent Account Auto-Population & Preserve Selection Intent] - 2026-09-11
 ### Fixed / Refactored

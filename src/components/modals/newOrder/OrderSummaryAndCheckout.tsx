@@ -26,6 +26,7 @@ export interface OrderSummaryAndCheckoutProps {
   getOrderBreakdown: (items: any[], category?: string, paymentMethod?: string, manualDiscount?: number, clientType?: string, accountId?: string, migrationFlatDiscount?: number) => any;
   calculateTotalPrice: (items: any[], category?: string, paymentMethod?: string, manualDiscount?: number, clientType?: string, accountId?: string, migrationFlatDiscount?: number) => number;
   isMigrationMode?: boolean;
+  isSubmitting?: boolean;
 }
 
 export const OrderSummaryAndCheckout: React.FC<OrderSummaryAndCheckoutProps> = ({
@@ -41,7 +42,8 @@ export const OrderSummaryAndCheckout: React.FC<OrderSummaryAndCheckoutProps> = (
   getServiceUnitPrice,
   getOrderBreakdown,
   calculateTotalPrice,
-  isMigrationMode
+  isMigrationMode,
+  isSubmitting
 }) => {
   const breakdown = getOrderBreakdown(
     newOrder.items,
@@ -265,7 +267,7 @@ export const OrderSummaryAndCheckout: React.FC<OrderSummaryAndCheckoutProps> = (
         {orderHeaderMode === 'Cotización' ? (
           <button 
             type="submit" 
-            disabled={newOrder.items.length === 0} 
+            disabled={newOrder.items.length === 0 || isSubmitting} 
             onClick={() => setNewOrder((p: any) => ({...p, status: 'Estimado'}))} 
             className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2"
           >

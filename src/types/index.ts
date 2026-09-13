@@ -240,10 +240,30 @@ export interface AuthUserProfile {
   canAccessDangerZone?: boolean;
 }
 
+export type AssignedUserRole = 'ventas' | 'operaciones' | 'produccion' | 'logistica' | 'admin';
+
+export type ViewRoleOption = 'admin' | 'ventas' | 'operaciones' | 'produccion';
+
+export interface PreProvisionUserPayload {
+  email: string;
+  displayName: string;
+  role: AssignedUserRole;
+}
+
 export interface FirebaseUserSubset {
   displayName?: string | null;
+  name?: string | null;
   email?: string | null;
   uid: string;
+  id?: string;
+  role?: string;
+  status?: string;
+  preProvisioned?: boolean;
+  canExport?: boolean;
+  canEditPrices?: boolean;
+  canManageRoles?: boolean;
+  canAccessDangerZone?: boolean;
+  lastLoginAt?: unknown;
 }
 
 export interface OrderLogoData {

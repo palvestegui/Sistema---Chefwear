@@ -67,7 +67,8 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
     handleCreateOrder,
     calculateTotalPrice,
     getItemUnitPrice,
-    getOrderBreakdown, getServiceUnitPrice
+    getOrderBreakdown, getServiceUnitPrice,
+    isSubmitting
   } = creator;
 
   const [showContactDropdown, setShowContactDropdown] = useState(false);
@@ -330,6 +331,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
               getOrderBreakdown={getOrderBreakdown}
               calculateTotalPrice={calculateTotalPrice}
               isMigrationMode={Boolean(isSuperAdmin && isHistoricalMode)}
+              isSubmitting={isSubmitting}
             />
           </div>
         </form>

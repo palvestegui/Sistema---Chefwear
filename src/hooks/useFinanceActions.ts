@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, setDoc, deleteDoc, increment, deleteField, query, collection, where, getDocs } from 'firebase/firestore';
 import { compressImage } from '../utils/imageUtils';
+import { showSuccessToast } from '../utils/toastUtils';
 import { getDocType } from '../utils/constants';
 import { getNextSequentialOrderId } from '../utils/sequenceUtils';
 
@@ -170,7 +171,7 @@ export const useFinanceActions = (
         
       setOrderToCollect(null);
       setViewingInvoiceId(finalOrderId);
-      alert('¡Orden Confirmada con éxito!');
+      showSuccessToast('✓ ¡Orden convertida con éxito!');
     } catch (err) {
       console.error("Error al convertir orden:", err);
       alert(`Error: ${err instanceof Error ? err.message : 'Error desconocido'}`);

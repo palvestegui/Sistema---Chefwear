@@ -86,7 +86,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode, db: any }> = ({
       }));
 
       unsubs.push(onSnapshot(collection(db, 'users'), (snapshot) => {
-        setUsersList(snapshot.docs.map(d => ({ ...d.data(), uid: d.id } as FirebaseUserSubset)));
+        setUsersList(snapshot.docs.map(d => ({ ...d.data(), id: d.id, uid: d.id } as FirebaseUserSubset)));
       }));
 
       unsubs.push(onSnapshot(doc(db, 'pricing', 'global'), (docSnap) => {

@@ -2,6 +2,7 @@ import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getNextSequentialQuoteId, getNextSequentialOrderId } from '../utils/sequenceUtils';
 import { compressImage } from '../utils/imageUtils';
+import { showSuccessToast } from '../utils/toastUtils';
 import { determineNewOrderProductionStatus } from '../utils/orderUtils';
 import { resolveSellerInfo } from '../utils/sellerUtils';
 import { provisionInstitutionalContacts } from '../utils/institutionalOrderUtils';
@@ -182,6 +183,7 @@ export const useOrderSubmission = (
           ).catch(err => console.warn('Institutional contact provisioning error (Quote):', err));
         }
 
+        showSuccessToast('✓ ¡Cotización creada con éxito!');
         setShowNewOrder(false);
         resetForm();
       } else {
@@ -273,6 +275,7 @@ export const useOrderSubmission = (
           });
         }
 
+        showSuccessToast('✓ ¡Orden lanzada con éxito!');
         setShowNewOrder(false);
         setOrderToCollect(null);
         setManualAmount('');

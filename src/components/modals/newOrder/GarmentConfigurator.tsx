@@ -4,6 +4,8 @@ import { GarmentSizingSection } from './GarmentSizingSection';
 import { ImageIcon, Trash2 } from 'lucide-react';
 import { isServiceApplicable } from '../../../utils/serviceUtils';
 import { calculateVolumeScaledServiceUnitPrice } from '../../../utils/pricingCalculator';
+import { useAuth } from '../../../contexts/AuthContext';
+import { requiredFields, fieldLabels } from '../../../utils/constants';
 
 export interface GarmentConfiguratorProps {
   newOrder: any;
@@ -28,6 +30,7 @@ export const GarmentConfigurator: React.FC<GarmentConfiguratorProps> = ({
   calculateItemPriceRaw,
   getPricingTierFromClientType,
 }) => {
+  const { userProfile } = useAuth();
   const isUdiMode = newOrder.accountId === 'ACC-001' || newOrder.category === 'UDI' || newOrder.clientType === 'Estudiante UDI' || (newOrder.clientType === 'Universidad / Instituto' && (newOrder.companyName || '').toLowerCase().includes('udi')) || newOrder.pricingTier === 'UDI Especial' || newOrder.pricingTier === 'Contrato Institucional';
 
   const specialPresets = pricing?.specialPresets || { "UDI Especial": pricing?.udiPricing || {} };
@@ -365,6 +368,19 @@ export const GarmentConfigurator: React.FC<GarmentConfiguratorProps> = ({
             if (!isUdiMode && (!itemToAdd.fabricColor || itemToAdd.fabricColor.trim() === '')) {
               return alert("Por favor, ingrese el color de la tela (el campo es obligatorio).");
             }
+
+            // Enforce 8 Filipina measurements when Ventas role is active
+            const isFilipina = (itemToAdd.name || '').toLowerCase().includes('filipina') || itemToAdd.name === 'Uniforme Completo UDI';
+            const isCustomSizing = itemToAdd.nonUdiSizingType === 'custom' || itemToAdd.sizingMode === 'Custom Tailored';
+            if (userProfile?.role === 'VENTAS' && isFilipina && isCustomSizing) {
+              const required = requiredFields['Filipina'] || [];
+              const missing = required.filter((m: string) => !itemToAdd.measurements?.[m] || String(itemToAdd.measurements[m]).trim() === '');
+              if (missing.length > 0) {
+                const missingNames = missing.map((m: string) => fieldLabels[m] || m).join(', ');
+                return alert(`Como Vendedor (Matías), debes registrar las 8 medidas obligatorias de la Filipina:\n${missingNames}`);
+              }
+            }
+
             let finalSizingMode = itemToAdd.sizingMode || 'Standard Size';
             const hasMeasurements = itemToAdd.measurements && Object.keys(itemToAdd.measurements).some(k => itemToAdd.measurements[k] && String(itemToAdd.measurements[k]).trim() !== '');
             const hasStandardSize = itemToAdd.size && ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'].includes(itemToAdd.size);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
+import { doc, deleteDoc } from 'firebase/firestore';
 // from 'react';
 import * as LucideIcons from 'lucide-react';
 const { 
@@ -63,7 +64,7 @@ export const QuotesList: React.FC<QuotesListProps> = ({
   handleDeleteOrder,
   normRole
 }) => {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isActualSuperAdmin } = useAuth();
 
   const quoteOrders = orders.filter(o => getDocType(o) === 'COTIZACION' && o.status !== 'Expirado' && o.status !== 'Cancelado');
 
@@ -257,7 +258,8 @@ export const QuotesList: React.FC<QuotesListProps> = ({
                   </button>
                 )}
 
-                {isSuperAdmin && (
+                {isActualSuperAdmin && (
+<>
 <button onClick={() => {
                   setCancelQuoteModal({ open: true, order });
                   setCancelResolutionType('Devolución Total');
@@ -267,6 +269,24 @@ export const QuotesList: React.FC<QuotesListProps> = ({
                 }} className="w-full bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/50 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2">
                   <Ban size={16}/> Anular Cotización
                 </button>
+                    <button
+                      onClick={async () => {
+                        if (window.confirm("¿Eliminar permanentemente esta cotización de prueba de la base de datos?")) {
+                          try {
+                            const targetId = (order as any).id || (order as any).orderId;
+                            await deleteDoc(doc(db, 'orders', targetId));
+                          } catch (err: any) {
+                            console.error(err);
+                            alert('Error al eliminar: ' + err.message);
+                          }
+                        }
+                      }}
+                      className="w-full bg-red-900/20 hover:bg-red-800/40 text-red-500 border border-red-900/30 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 mt-2"
+                    >
+                      <Trash2 size={16} /> ELIMINAR (ADMIN)
+                    </button>
+
+</>
 )}
               </div>
             </div>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
+import { doc, updateDoc, deleteField } from 'firebase/firestore';
+import { db } from '../../../firebase';
 // from 'react';
 import { 
   FileText, DollarSign, Ban, Lock, ImageIcon, ArrowRight, X, Download, Users, Trash2, Eye, Pencil 
@@ -72,7 +74,7 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
   setConfirmDeleteId,
   handleDeleteOrder
 }) => {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isActualSuperAdmin } = useAuth();
   const [adjustingFinancialOrder, setAdjustingFinancialOrder] = useState<Order | null>(null);
 
   const activeOrders = orders.filter(o => 
@@ -266,7 +268,32 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
                   </button>
                 )}
 
+                
                 {isSuperAdmin && (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm('¿Revertir esta orden a Cotización? Perderá su progreso de producción.')) {
+                        try {
+                          await updateDoc(doc(db, 'orders', order.id), {
+                            status: 'Cotización',
+                            productionStatus: deleteField(),
+                            timestamps: deleteField(),
+                            docType: 'COTIZACION'
+                          });
+                          alert('Orden revertida a Cotización con éxito');
+                        } catch (err: any) {
+                          console.error(err);
+                          alert('Error al revertir: ' + err.message);
+                        }
+                      }
+                    }}
+                    className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 mt-2"
+                  >
+                    ↩️ REVERTIR A COTIZACIÓN
+                  </button>
+                )}
+
+                {isActualSuperAdmin && (
 <button
                     onClick={() => {
                       setCancelActiveOrderModal({ open: true, order });

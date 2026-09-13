@@ -1,6 +1,7 @@
-import React, { ReactNode, useState, useEffect } from 'react';
-import { Menu } from 'lucide-react';
+import React, { ReactNode, useState, useEffect, useRef } from 'react';
+import { Menu, Eye, ChevronDown, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { ViewRoleOption } from '../../types';
 import { SidebarNav } from './SidebarNav';
 
 interface MainLayoutProps {
@@ -29,7 +30,43 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   setSettingsTab,
   invalidPriceFields
 }) => {
-  const { userProfile } = useAuth();
+  const { userProfile, isSuperAdmin, isActualSuperAdmin, activeViewRole, setActiveViewRole } = useAuth();
+  const canShowImpersonation = Boolean(isActualSuperAdmin || isSuperAdmin);
+
+  const [isViewRoleMenuOpen, setIsViewRoleMenuOpen] = useState(false);
+  const viewRoleRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (viewRoleRef.current && !viewRoleRef.current.contains(event.target as Node)) {
+        setIsViewRoleMenuOpen(false);
+      }
+    };
+    if (isViewRoleMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isViewRoleMenuOpen]);
+
+  // If switched to 'ventas', redirect away from restricted views immediately
+  useEffect(() => {
+    if (activeViewRole === 'ventas' || userProfile?.role === 'VENTAS') {
+      if (['ajustes', 'reportes', 'clientes', 'crm'].includes(activeTab)) {
+        setActiveTab('ventas');
+      }
+    }
+  }, [activeViewRole, userProfile?.role, activeTab, setActiveTab]);
+
+  const VIEW_ROLE_OPTIONS: { id: ViewRoleOption; label: string; shortLabel: string; badge: string; description: string }[] = [
+    { id: 'admin', label: 'Administrador (Full access)', shortLabel: 'Admin', badge: 'Full access', description: 'Acceso total y SuperAdmin' },
+    { id: 'ventas', label: 'Ventas (Matías)', shortLabel: 'Ventas', badge: 'Ventas', description: 'Flujo comercial y clientes' },
+    { id: 'operaciones', label: 'Operaciones (León)', shortLabel: 'Operaciones', badge: 'Taller', description: 'Compras, insumos y corte' },
+    { id: 'produccion', label: 'Producción (Doris)', shortLabel: 'Producción', badge: 'Taller', description: 'Confección y bordados' }
+  ];
   
   // Persistent desktop sidebar state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -134,12 +171,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
       {/* 3. Main Column: Compact Top Bar + Main Viewport */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Compact Top Header Bar (Mobile Only: h-10 / 40px) */}
-        <header className="lg:hidden h-10 border-b border-stone-800 px-3 flex items-center justify-between shrink-0 bg-stone-950/90 backdrop-blur-md z-10">
+        {/* Top Header Bar: Visible on Mobile & Desktop (h-10 / 40px) */}
+        <header className="h-10 border-b border-stone-800 px-3 flex items-center justify-between shrink-0 bg-stone-950/90 backdrop-blur-md z-20">
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={toggleSidebar}
-              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 transition focus:outline-none"
+              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 transition focus:outline-none lg:hidden"
               title="Alternar Menú Lateral"
               aria-label="Alternar Menú Lateral"
             >
@@ -154,10 +191,78 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" title="En Línea" />
             </div>
           </div>
+
+          {/* Discreet Modo Vista (Impersonation Selector) */}
+          {canShowImpersonation && (
+            <div className="relative shrink-0" ref={viewRoleRef}>
+              <button
+                type="button"
+                onClick={() => setIsViewRoleMenuOpen(prev => !prev)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-wider transition border cursor-pointer ${
+                  activeViewRole !== 'admin'
+                    ? 'bg-amber-950/50 border-amber-500/70 text-amber-300 hover:bg-amber-900/50 shadow-sm shadow-amber-950/50'
+                    : 'bg-stone-900/90 border-stone-700/60 text-stone-300 hover:text-stone-100 hover:bg-stone-800/90'
+                }`}
+                title="Modo Vista: Alternar perfil para grabación o pruebas"
+                aria-label="Modo Vista"
+              >
+                <Eye size={13} className={activeViewRole !== 'admin' ? 'text-amber-400 animate-pulse' : 'text-stone-400'} />
+                <span>Vista: {VIEW_ROLE_OPTIONS.find(o => o.id === activeViewRole)?.shortLabel || 'Admin'}</span>
+                <ChevronDown size={12} className={`transition-transform duration-200 ${isViewRoleMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isViewRoleMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-64 rounded-xl bg-stone-900 border border-stone-800 shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2.5 py-1.5 border-b border-stone-800/80 mb-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1.5">
+                      <Eye size={12} />
+                      Modo Vista (Simulación)
+                    </p>
+                    <p className="text-[10px] text-stone-400 mt-0.5">
+                      Cambia la vista temporalmente sin alterar Firestore.
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    {VIEW_ROLE_OPTIONS.map((opt) => {
+                      const isSelected = activeViewRole === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveViewRole(opt.id);
+                            setIsViewRoleMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-amber-600/20 text-amber-300 border border-amber-500/40'
+                              : 'text-stone-300 hover:text-stone-100 hover:bg-stone-800/70 border border-transparent'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1 pr-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold truncate">{opt.label}</span>
+                              {opt.id === 'admin' && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 font-mono">
+                                  Full
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-stone-500 truncate">{opt.description}</p>
+                          </div>
+                          {isSelected && <Check size={14} className="text-amber-400 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         {/* 4. Main Content Canvas */}
-        <main className="flex-1 w-full h-full lg:h-screen overflow-y-auto p-2 sm:p-4">
+        <main className="flex-1 w-full h-full lg:h-[calc(100vh-2.5rem)] overflow-y-auto p-2 sm:p-4">
           {children}
         </main>
       </div>

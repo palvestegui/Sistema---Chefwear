@@ -106,7 +106,7 @@ export const App: React.FC = () => {
   }, []);
 
   const isApproved = userProfile?.approved !== false;
-  const isWriteDisabled = (view: string) => userProfile?.role === 'LECTURA' || (userProfile?.role === 'VENDEDOR_PREVENTA' && view !== 'ventas');
+  const isWriteDisabled = (view: string) => userProfile?.role === 'LECTURA' || ((userProfile?.role === 'VENDEDOR_PREVENTA' || userProfile?.role === 'VENTAS') && view !== 'ventas');
   const normRole = (r?: string) => r || userProfile?.role || 'LECTURA';
   const formatDate = (d: any) => new Date(d).toLocaleDateString();
 
@@ -197,7 +197,7 @@ export const App: React.FC = () => {
         />
       )}
       
-      {activeTab === 'clientes' && isApproved && (
+      {activeTab === 'clientes' && isApproved && userProfile?.role !== 'VENTAS' && (
         <CRMView 
           clientAccounts={clientAccounts}
           masterContacts={masterContacts}
@@ -238,7 +238,7 @@ export const App: React.FC = () => {
         <LogisticsView orders={orders} isWriteDisabled={isWriteDisabled} updateStatus={updateStatus} />
       )}
 
-      {activeTab === 'reportes' && isApproved && (
+      {activeTab === 'reportes' && isApproved && userProfile?.role !== 'VENTAS' && (
         <ReportsView 
           orders={orders} pricing={pricing}
           setExpandedLogoUrl={setExpandedLogoUrl}
@@ -256,7 +256,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {activeTab === 'ajustes' && isApproved && pricing && (
+      {activeTab === 'ajustes' && isApproved && userProfile?.role !== 'VENTAS' && pricing && (
         <SettingsView
           pricing={pricing}
           orders={orders}

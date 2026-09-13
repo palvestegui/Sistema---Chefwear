@@ -297,7 +297,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           </div>
 
           {/* 3. DIRECTORIO / CLIENTES */}
-          {isApproved && (
+          {isApproved && userProfile?.role !== 'VENTAS' && (
             <button
               onClick={() => handleSelect('clientes')}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs uppercase tracking-wider text-left transition-all ${
@@ -313,7 +313,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           )}
 
           {/* 4. REPORTES */}
-          {isApproved && (
+          {isApproved && userProfile?.role !== 'VENTAS' && (
             <button
               onClick={() => handleSelect('reportes')}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs uppercase tracking-wider text-left transition-all ${
@@ -343,7 +343,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
           </button>
 
           {/* 6. AJUSTES */}
-          {isApproved && (
+          {isApproved && userProfile?.role !== 'VENTAS' && (
             <div>
               <div className={`w-full flex items-center justify-between rounded-xl transition-all ${
                 isAjustesActive
