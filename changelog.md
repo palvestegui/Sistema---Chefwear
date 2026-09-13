@@ -289,3 +289,18 @@ All notable changes and architectural updates to Azafrán Chefwear are documente
 ### Architecture & Compliance
 - Adheres strictly to Rule 300 (logical files) and Rule 500 (visual components).
 - Zero usage of `any` in new interfaces and strict TypeScript type-checking.
+
+## 2026-09-12
+### Added
+- Implemented native Model Context Protocol (MCP) server endpoint at `/mcp` in `server.ts`.
+- Integrated SSE handshake for Gemini Spark connectivity.
+- Integrated JSON-RPC 2.0 dispatcher for 11 tools including `get_summary`, `get_reports`, `create_quote`, etc.
+
+### Changed
+- Refactored `server.ts` to strictly adhere to Architectural Mandate Rule 300/500.
+- Extracted pulse endpoints and action handlers into `src/server/pulseService.ts`.
+- Extracted MCP logic into `src/server/mcp.ts` to maintain small, composable logical files.
+- Re-architected backend `server.ts` line count from > 750 down to 238 lines.
+
+### Technical Debt / State
+- Zero hardcoding and strict type safety enforced across all new server modules.
