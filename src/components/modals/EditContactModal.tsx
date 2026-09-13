@@ -49,6 +49,15 @@ export const EditContactModal = ({
                 const nombre = editingMasterContact.contactNombre || splitName[0] || '';
                 const apellido = editingMasterContact.contactApellido || splitName.slice(1).join(' ') || '';
 
+                // Calculate the true displayed role to ensure we save exactly what the UI shows
+                const selectedAcc = clientAccounts.find((a) => a.accountId === editingMasterContact.accountId);
+                const roles = getRolesForAccountType(selectedAcc?.accountType);
+                let finalRole = editingMasterContact.role || 'OTRO';
+                if (!roles.includes(finalRole)) {
+                  finalRole = normalizeRole(finalRole, selectedAcc?.accountType);
+                }
+                const actualRoleToSave = roles.includes(finalRole) ? finalRole : (roles[0] || 'OTRO');
+
                 const sizing = editingMasterContact.sizingMatrix || editingMasterContact.sizingMatrix12PtCM || editingMasterContact.measurements || {};
                 const contactData = {
                   contactId: editingMasterContact.contactId,
@@ -56,7 +65,7 @@ export const EditContactModal = ({
                   contactNombre: nombre,
                   contactApellido: apellido,
                   fullName: editingMasterContact.fullName,
-                  role: editingMasterContact.role || '',
+                  role: actualRoleToSave,
                   phone: editingMasterContact.phone || '',
                   email: editingMasterContact.email || '',
                   socials: editingMasterContact.socials || {},

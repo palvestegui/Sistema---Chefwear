@@ -80,7 +80,7 @@ export const buildUnifiedDirectoryContacts = (
       contactId: cId,
       originalDocId: c.originalDocId || c.id || c.contactId,
       fullName,
-      role: c.role || 'PARTICULAR',
+      role: c.role ? c.role : (c.accountId === 'ACC-001' || (c.companyName && String(c.companyName).toUpperCase().includes('UDI'))) ? 'ESTUDIANTE' : (c.accountId === 'ACC-000' || !c.accountId) ? 'PARTICULAR' : 'OTRO',
       accountId: c.accountId || 'ACC-000',
       phone: c.phone || '',
       email: c.email || '',
@@ -142,3 +142,19 @@ export const buildUnifiedDirectoryContacts = (
 
   return Array.from(contactMap.values());
 };
+
+
+export const TAILORING_12_POINTS = [
+  { key: 'F_Hombros', alt: 'hombros', label: 'Hombros', group: 'filipina' },
+  { key: 'F_Cuello', alt: 'cuello', label: 'Cuello', group: 'filipina' },
+  { key: 'F_Largo_Brazo', alt: 'largoBrazo', label: 'Largo Brazo', group: 'filipina' },
+  { key: 'F_Ancho_Brazo', alt: 'anchoBrazo', label: 'Ancho Brazo', group: 'filipina' },
+  { key: 'F_Ancho_Torso', alt: 'anchoTorso', label: 'Ancho Torso', group: 'filipina' },
+  { key: 'F_Largo_Torso', alt: 'largoTorso', label: 'Largo Torso', group: 'filipina' },
+  { key: 'F_Cintura', alt: 'cintura', label: 'Cintura (Filipina)', group: 'filipina' },
+  { key: 'F_Cadera', alt: 'cadera', label: 'Cadera (Filipina)', group: 'filipina' },
+  { key: 'P_Cintura', alt: 'cintura', label: 'Cintura (Pantalón)', group: 'pantalon' },
+  { key: 'P_Cadera', alt: 'cadera', label: 'Cadera (Pantalón)', group: 'pantalon' },
+  { key: 'P_Ancho_Pierna', alt: 'anchoPierna', label: 'Ancho Pierna', group: 'pantalon' },
+  { key: 'P_Largo_Pierna', alt: 'largoPierna', label: 'Largo Pierna', group: 'pantalon' }
+];

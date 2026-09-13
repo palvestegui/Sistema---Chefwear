@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { doc, updateDoc, deleteField } from 'firebase/firestore';
+import { showSuccessToast, showErrorToast } from '../../../utils/toastUtils';
 import { db } from '../../../firebase';
 // from 'react';
 import { 
@@ -75,6 +76,8 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
   handleDeleteOrder
 }) => {
   const { isSuperAdmin, isActualSuperAdmin } = useAuth();
+  const [orderToRevert, setOrderToRevert] = useState<any>(null);
+  const [isReverting, setIsReverting] = useState(false);
   const [adjustingFinancialOrder, setAdjustingFinancialOrder] = useState<Order | null>(null);
 
   const activeOrders = orders.filter(o => 
@@ -271,22 +274,7 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
                 
                 {isSuperAdmin && (
                   <button
-                    onClick={async () => {
-                      if (window.confirm('¿Revertir esta orden a Cotización? Perderá su progreso de producción.')) {
-                        try {
-                          await updateDoc(doc(db, 'orders', order.id), {
-                            status: 'Cotización',
-                            productionStatus: deleteField(),
-                            timestamps: deleteField(),
-                            docType: 'COTIZACION'
-                          });
-                          alert('Orden revertida a Cotización con éxito');
-                        } catch (err: any) {
-                          console.error(err);
-                          alert('Error al revertir: ' + err.message);
-                        }
-                      }
-                    }}
+                    onClick={() => setOrderToRevert(order)}
                     className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 mt-2"
                   >
                     ↩️ REVERTIR A COTIZACIÓN
@@ -317,6 +305,54 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
           order={adjustingFinancialOrder}
           onClose={() => setAdjustingFinancialOrder(null)}
         />
+      )}
+      {orderToRevert && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isReverting && setOrderToRevert(null)}></div>
+          <div className="relative bg-stone-900 border border-stone-800 rounded-3xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-lg font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+              <span className="text-amber-500 text-2xl">⚠</span> ¿Revertir Orden a Cotización?
+            </h3>
+            <p className="text-sm text-stone-400 mb-8 leading-relaxed font-medium">
+              La orden <strong className="text-stone-200">{orderToRevert.orderId || orderToRevert.id}</strong> volverá al estado de Cotización y se desvinculará del flujo de taller. Esta acción es reversible volviendo a cobrar y lanzar la orden.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setOrderToRevert(null)}
+                disabled={isReverting}
+                className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isReverting}
+                onClick={async () => {
+                  setIsReverting(true);
+                  try {
+                    await updateDoc(doc(db, 'orders', orderToRevert.id), {
+                      status: 'Cotización',
+                      productionStatus: deleteField(),
+                      timestamps: deleteField(),
+                      docType: 'COTIZACION'
+                    });
+                    showSuccessToast(`✓ ¡Orden ${orderToRevert.orderId || orderToRevert.id} revertida a Cotización con éxito!`);
+                    setOrderToRevert(null);
+                  } catch (err: any) {
+                    console.error(err);
+                    showErrorToast('Error al revertir: ' + err.message);
+                  } finally {
+                    setIsReverting(false);
+                  }
+                }}
+                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition disabled:opacity-50 flex items-center justify-center"
+              >
+                {isReverting ? 'Revirtiendo...' : 'Revertir a Cotización'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

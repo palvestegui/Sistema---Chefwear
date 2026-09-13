@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { doc, deleteDoc } from 'firebase/firestore';
+import { showSuccessToast, showErrorToast } from '../../../utils/toastUtils';
 // from 'react';
 import * as LucideIcons from 'lucide-react';
 const { 
@@ -65,6 +66,8 @@ export const QuotesList: React.FC<QuotesListProps> = ({
   normRole
 }) => {
   const { isSuperAdmin, isActualSuperAdmin } = useAuth();
+  const [quoteToDelete, setQuoteToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const quoteOrders = orders.filter(o => getDocType(o) === 'COTIZACION' && o.status !== 'Expirado' && o.status !== 'Cancelado');
 
@@ -270,17 +273,7 @@ export const QuotesList: React.FC<QuotesListProps> = ({
                   <Ban size={16}/> Anular Cotización
                 </button>
                     <button
-                      onClick={async () => {
-                        if (window.confirm("¿Eliminar permanentemente esta cotización de prueba de la base de datos?")) {
-                          try {
-                            const targetId = (order as any).id || (order as any).orderId;
-                            await deleteDoc(doc(db, 'orders', targetId));
-                          } catch (err: any) {
-                            console.error(err);
-                            alert('Error al eliminar: ' + err.message);
-                          }
-                        }
-                      }}
+                      onClick={() => setQuoteToDelete(order)}
                       className="w-full bg-red-900/20 hover:bg-red-800/40 text-red-500 border border-red-900/30 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-2 mt-2"
                     >
                       <Trash2 size={16} /> ELIMINAR (ADMIN)
@@ -293,6 +286,50 @@ export const QuotesList: React.FC<QuotesListProps> = ({
           </div>
         );
       })}
+      {quoteToDelete && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isDeleting && setQuoteToDelete(null)}></div>
+          <div className="relative bg-stone-900 border border-red-900/50 rounded-3xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-lg font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+              <span className="text-red-500 text-2xl">⚠</span> ¿Eliminar Cotización Permanentemente?
+            </h3>
+            <p className="text-sm text-stone-400 mb-8 leading-relaxed font-medium">
+              La cotización <strong className="text-stone-200">{quoteToDelete.orderId || quoteToDelete.id}</strong> de <strong className="text-stone-200">{quoteToDelete.clientName}</strong> será eliminada definitivamente de la base de datos sin registrar reportes de anulación. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setQuoteToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 bg-stone-800 hover:bg-stone-700 text-stone-300 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true);
+                  try {
+                    const targetId = (quoteToDelete as any).id || (quoteToDelete as any).orderId;
+                    await deleteDoc(doc(db, 'orders', targetId));
+                    showSuccessToast('✓ ¡Cotización eliminada con éxito!');
+                    setQuoteToDelete(null);
+                  } catch (err: any) {
+                    console.error(err);
+                    showErrorToast('Error al eliminar: ' + err.message);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition disabled:opacity-50 flex items-center justify-center"
+              >
+                {isDeleting ? 'Eliminando...' : 'Eliminar Permanentemente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

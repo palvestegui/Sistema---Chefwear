@@ -16,7 +16,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { doc, deleteDoc } from 'firebase/firestore';
-import { normalizeName } from '../../utils/contactUtils';
+import { useAuth } from '../../contexts/AuthContext';
+import { InlineMergeContactModal } from './InlineMergeContactModal';
+import { normalizeName, TAILORING_12_POINTS } from '../../utils/contactUtils';
 import { SocialBadges } from '../crm/SocialBadges';
 
 export interface ContactProfileModalProps {
@@ -32,20 +34,7 @@ export interface ContactProfileModalProps {
   db?: any;
 }
 
-const TAILORING_12_POINTS = [
-  { key: 'F_Hombros', alt: 'hombros', label: 'Hombros', group: 'filipina' },
-  { key: 'F_Cuello', alt: 'cuello', label: 'Cuello', group: 'filipina' },
-  { key: 'F_Largo_Brazo', alt: 'largoBrazo', label: 'Largo Brazo', group: 'filipina' },
-  { key: 'F_Ancho_Brazo', alt: 'anchoBrazo', label: 'Ancho Brazo', group: 'filipina' },
-  { key: 'F_Ancho_Torso', alt: 'anchoTorso', label: 'Ancho Torso', group: 'filipina' },
-  { key: 'F_Largo_Torso', alt: 'largoTorso', label: 'Largo Torso', group: 'filipina' },
-  { key: 'F_Cintura', alt: 'cintura', label: 'Cintura (Filipina)', group: 'filipina' },
-  { key: 'F_Cadera', alt: 'cadera', label: 'Cadera (Filipina)', group: 'filipina' },
-  { key: 'P_Cintura', alt: 'cintura', label: 'Cintura (Pantalón)', group: 'pantalon' },
-  { key: 'P_Cadera', alt: 'cadera', label: 'Cadera (Pantalón)', group: 'pantalon' },
-  { key: 'P_Ancho_Pierna', alt: 'anchoPierna', label: 'Ancho Pierna', group: 'pantalon' },
-  { key: 'P_Largo_Pierna', alt: 'largoPierna', label: 'Largo Pierna', group: 'pantalon' }
-];
+
 
 export const ContactProfileModal: React.FC<ContactProfileModalProps> = ({
   contact,
@@ -62,6 +51,8 @@ export const ContactProfileModal: React.FC<ContactProfileModalProps> = ({
   const [isMeasurementsOpen, setIsMeasurementsOpen] = useState(initialOpenMeasurements);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { isSuperAdmin, isActualSuperAdmin } = useAuth();
+  const [showMergeModal, setShowMergeModal] = useState(false);
 
   if (!isOpen || !contact) return null;
 
@@ -379,6 +370,7 @@ export const ContactProfileModal: React.FC<ContactProfileModalProps> = ({
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-2 border-t border-stone-800 shrink-0">
+          <div className="flex items-center gap-2">
           <button
             type="button"
             disabled={!canDelete || isDeleting}
@@ -399,9 +391,20 @@ export const ContactProfileModal: React.FC<ContactProfileModalProps> = ({
             className="px-4 py-2 text-red-400 hover:bg-red-950/40 border border-red-900/40 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
           >
             <Trash2 size={14} />
-            <span>Eliminar Contacto</span>
+            <span className="hidden sm:inline">Eliminar Contacto</span>
           </button>
-
+          
+          {(isSuperAdmin || isActualSuperAdmin) && (
+            <button
+              type="button"
+              onClick={() => setShowMergeModal(true)}
+              className="px-4 py-2 text-amber-500 hover:bg-amber-950/40 border border-amber-900/50 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap"
+            >
+              <span className="hidden sm:inline">🔀 Fusionar Contacto</span>
+              <span className="sm:hidden">🔀 Fusionar</span>
+            </button>
+          )}
+          </div>
           <div className="flex items-center gap-2">
             {onOpenEdit && (
               <button
@@ -478,6 +481,17 @@ export const ContactProfileModal: React.FC<ContactProfileModalProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {showMergeModal && (
+        <InlineMergeContactModal
+          contact={contact}
+          onClose={() => setShowMergeModal(false)}
+          onSuccess={() => {
+            setShowMergeModal(false);
+            onClose();
+          }}
+        />
       )}
     </div>
   );

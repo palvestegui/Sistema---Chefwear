@@ -1,5 +1,32 @@
 ## [Unreleased]
 ### Fixed
+- Fixed CRM Directorio rendering 'PARTICULAR' indefinitely for specific contact roles (such as 'ESTUDIANTE' or 'DOCENTE'). 
+- Synchronized \`EditContactModal.tsx\` to bind directly to the exact computed role dropdown value before saving to Firestore, bypassing static state desynchronization.
+- Refactored \`contactUtils.ts\` unify engine to intelligently derive and display appropriate \`cargo\` based on accurate underlying \`accountId\` mapping if not explicitly provided.
+
+
+### Added
+- Implemented SuperAdmin "Fusionar Contacto" inline modal within \`ContactProfileModal.tsx\` to safely merge duplicate contacts into master records.
+- Engineered atomic Firestore Batch migrations transferring all associated active and historical orders/quotes from the duplicate to the chosen master contact seamlessly.
+
+### Changed
+- Extracted \`TAILORING_12_POINTS\` constant to \`contactUtils.ts\` to ensure \`ContactProfileModal.tsx\` adheres strictly to architectural Rule 500 line limits.
+
+
+### Fixed
+- Resolved fatal runtime ReferenceErrors that caused a white screen on mount. Correctly injected missing \`useState\` hook imports and state initializers inside \`QuotesList.tsx\`.
+
+### Fixed
+- Restored missing state declarations for \`orderToRevert\`, \`isReverting\`, \`quoteToDelete\`, and \`isDeleting\` in \`ActiveOrdersList.tsx\` and \`QuotesList.tsx\` that were causing ReferenceErrors during modal invocation.
+\n### Fixed
+- Banned all browser-native \`window.confirm()\` and \`window.alert()\` instances from \`ActiveOrdersList.tsx\` and \`QuotesList.tsx\`.
+
+### Added
+- Implemented a custom in-app Confirmation Modal for "Revertir a Cotización" featuring specific warning body text matching the order ID, resolving smoothly via the DOM-based Toast notification system on completion.
+- Implemented a custom in-app Confirmation Modal for "Eliminar Cotización" (Admin Hard Delete) ensuring the destruction scope is completely spelled out before triggering the toast notification workflow.
+
+
+### Fixed
 - Migrated Authentication Provider from \`signInWithRedirect\` to \`signInWithPopup\` in \`AuthContext.tsx\` to resolve cross-domain mobile browser session drops.
 - Ensured immediate user profile resolution persists via the \`onAuthStateChanged\` observer reacting to the synchronous popup resolution.
 

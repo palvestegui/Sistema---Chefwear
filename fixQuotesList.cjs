@@ -1,10 +1,8 @@
 const fs = require('fs');
 
-function patchFile(filename) {
-  let content = fs.readFileSync(filename, 'utf8');
-
-  // In QuotesList and ActiveOrdersList, they map over order.items.
-  // I need to ensure they don't break, but they don't render services internally anyway.
-}
-
-patchFile('src/components/views/sales/QuotesList.tsx');
+let code = fs.readFileSync('src/components/views/sales/QuotesList.tsx', 'utf8');
+code = code.replace(
+  "  const { isActualSuperAdmin } = useAuth();",
+  "  const { isActualSuperAdmin } = useAuth();\n  const [quoteToDelete, setQuoteToDelete] = useState<any>(null);\n  const [isDeleting, setIsDeleting] = useState(false);"
+);
+fs.writeFileSync('src/components/views/sales/QuotesList.tsx', code);
