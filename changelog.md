@@ -321,3 +321,27 @@ All notable changes and architectural updates to Azafrán Chefwear are documente
 - **Admin App Context**: Integrated explicit `firebase-admin/app` initialization inside `src/server/adminDb.ts` matching the requested `projectId`. Mapped the instantiated `adminDb` connection to the exact target `firestoreDatabaseId` dynamically inferred from `firebase-applet-config.json` (bypassing Firestore Rules validation which caused "Missing or insufficient permissions").
 - **Quote Creation Refactoring**: Formally standardized `handleActionCreateQuote` locally in `pulseService.ts`. Rebuilt document generation logic to query against `db.collection('orders')`, infer the next sequential `orderId` dynamically (falling back to `#ORD-00026`), and assign the complete standard payload keys (e.g. `docType`, `sellerName`, `amountCollected`).
 - **Dependency Clean-up**: Stripped outdated Web SDK `firebase/firestore` queries (`getDocs`, `collection`) entirely out of the TS backend source, exchanging them purely for robust Admin SDK dot chaining syntax (`db.collection(...).get()`). Verified and successfully resolved compiler output.
+
+## [2026-09-15] - Workshop Production Custom Measurements Support
+- **Feature**: Surfaced 8-point tailoring measurements directly into the Workshop Production view (`ProductionView.tsx`) to assist tailors like Doña Doris.
+- **UI Architecture**: Implemented a responsive toggle drawer that conditionally evaluates if any custom measurement fields exist beyond standard sizing for a grouped garment. 
+- **Design execution**: 
+  - An amber `[✂️ A MEDIDA]` badge clearly overrides or sits next to the standard sizing pill.
+  - Expanding the `[📏 Medidas de Taller]` dropdown renders a dark, high-contrast, mathematically tight grid detailing specific limb and torso lengths based on garment type (Pants vs. Tops).
+- **Line Count Discipline**: Refactored the insertion surgically into the existing iteration block, successfully keeping the `ProductionView.tsx` component well under 300 lines (currently at 258 lines).
+
+## [2026-09-15] - Workshop Production Custom Measurements Support
+- **Feature**: Surfaced 8-point tailoring measurements directly into the Workshop Production view (\`ProductionView.tsx\`) to assist tailors like Doña Doris.
+- **UI Architecture**: Implemented a responsive toggle drawer that conditionally evaluates if any custom measurement fields exist beyond standard sizing for a grouped garment. 
+- **Design execution**: 
+  - An amber \`[✂️ A MEDIDA]\` badge clearly overrides or sits next to the standard sizing pill.
+  - Expanding the \`[📏 Medidas de Taller]\` dropdown renders a dark, high-contrast, mathematically tight grid detailing specific limb and torso lengths based on garment type (Pants vs. Tops).
+- **Line Count Discipline**: Refactored the insertion surgically into the existing iteration block, successfully keeping the \`ProductionView.tsx\` component well under 300 lines (currently at 258 lines).
+
+## [2026-09-15] - Workshop Production Custom Measurements Cascade Update
+- **Feature**: Extended the Workshop custom tailoring measurements logic in `ProductionView.tsx` with a powerful 3-Tier fallback mechanism.
+- **Architectural Directive**: Implemented logic to support multi-garment Bundles ('Uniforme Completo UDI'), ensuring the production card searches the garment tree to surface related specs:
+  - **Tier 1 (Garment Level)**: Resolves directly against sibling garments in the order items (e.g. searching the bundle's children for "filipina" and "pantalón" measurements).
+  - **Tier 2 (Order Level)**: Falls back to the root `order.measurements`.
+  - **Tier 3 (Contact Level)**: Falls back to `order.contact.measurements` if none are found in the direct order footprint.
+- **UI Architecture**: Deeply integrated these fallbacks into the dark expansion panel to dynamically segregate measurements into '👘 FILIPINA', '👖 PANTALÓN' and 'MEDIDAS' sections depending on the garment context and the payload structure.
