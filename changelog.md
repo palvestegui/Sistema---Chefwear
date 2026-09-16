@@ -345,3 +345,42 @@ All notable changes and architectural updates to Azafrán Chefwear are documente
   - **Tier 2 (Order Level)**: Falls back to the root `order.measurements`.
   - **Tier 3 (Contact Level)**: Falls back to `order.contact.measurements` if none are found in the direct order footprint.
 - **UI Architecture**: Deeply integrated these fallbacks into the dark expansion panel to dynamically segregate measurements into '👘 FILIPINA', '👖 PANTALÓN' and 'MEDIDAS' sections depending on the garment context and the payload structure.
+
+## [2026-09-15] - Workshop Production Drawer UI Encapsulation
+- **Feature**: Redesigned the Custom Measurement grid inside the Production drawer to fix label collisions (specifically the "PECHO/TORSO" truncation).
+- **Design Execution**:
+  - Replaced the simple floating text layout with a strict, 4-column **Encapsulated Micro-Tile Grid**.
+  - Expanded the container boundaries (`min-w-[320px] sm:min-w-[380px]`) and applied a `.truncate` modifier mapping labels inside clean, independent bounding boxes. 
+  - Standardized the label format, safely truncating "Pecho/Torso" down to "Pecho" across the 8-point layout matrix.
+- **Rule Adherence**: Completed all structural layout refactoring entirely within the existing bounds of `ProductionView.tsx`, leaving the file at an optimal 297 lines (Zero rule breakage).
+
+## [2026-09-15] - Workshop Production Fluid Density Update
+- **Feature**: Re-architected the layout density of `ProductionView.tsx` to display multiple Workshop orders horizontally across desktop/laptop views while drastically reducing vertical bloat on mobile.
+- **Design Execution**:
+  - **Multi-Card Grid**: Compressed the master production cards (adjusting padding from `p-8` down to `p-4`) and shifted them into a dense matrix (`lg:grid-cols-2 xl:grid-cols-3`). This allows Doña Doris to see up to 6 orders simultaneously on wide screens.
+  - **Ultra-Compact Header**: Minified the entire order header (Customer Name, Status Badge, and Action Buttons) into a single, tightly-wrapping horizontal bar. Action buttons were aggressively shrunk (from `py-3` to `py-1.5`, locking height to `h-8`). 
+  - **Fluid Measurement Drawer**: Discarded all fixed boundaries. The 3-Tier measurement engine now dynamically flows into `grid-cols-2` on mobile portrait (safeguarding labels) and `grid-cols-4` on wider viewports. A single garment + drawer now comfortably fits inside 360px vertical height.
+- **Rule Adherence**: The UI refactoring was accomplished flawlessly within the existing file, staying exactly at 294 lines long (0 TS errors).
+
+## [2026-09-15] - Workshop Production Dual-Mode Architecture
+- **Feature**: Re-architected `ProductionView.tsx` into a highly responsive dual-mode layout.
+- **Design Execution**:
+  - **Desktop / Laptop Mode (`lg+`)**: Completely replaced the card grid with a Gmail-style Row Ledger. Doña Doris can now view up to 15 orders strictly categorized into a 6-column full-width table. Measurement expansions appear as clean, inline horizontal data rows beneath the garments without truncating labels.
+  - **Mobile Portrait Mode (`< sm`)**: Re-compressed the header onto a single horizontal line alongside the action buttons, ensuring the customer's name remains visible when interacting with the 2-column measurement grid.
+  - **Mobile Landscape Mode**: Intercepted the layout using Tailwind `landscape:` modifiers to spawn a 2-pane split screen. The left pane (35%) holds identity and action buttons; the right pane (65%) holds the scrolling measurement grids, capping the entire card's vertical height below 300px to eradicate vertical scrolling.
+- **UI Architecture Update**: Refined the Mobile Landscape implementation of `ProductionView.tsx`. Replaced the previous 35/65 column split with a strict 2-Row Stacked Layout constraint. 
+  - **Row 1**: Anchors the customer identity, status badge, garment summary, and full suite of action buttons on a single horizontal axis.
+  - **Row 2**: Deploys a full-width measurement drawer beneath the action row, utilizing `grid-cols-4` for Filipina blocks and `grid-cols-2` for Pantalón blocks to maximize specification data density.
+  - **Constraints**: Maintained absolute isolation; the Desktop Row Ledger and Mobile Portrait models remain completely untouched, ensuring zero regressions while capping the landscape UI height at 320px.
+- **UI Architecture Update**: Applied Pass 1 to the mobile card layout in `ProductionView.tsx`.
+  - Replaced the separate Portrait/Landscape layouts with a single responsive layout for `< lg` screens.
+  - Implemented the requested Natural Container Height, removing fixed `h-[320px]` voids.
+  - Refined the Two-Tier Header: 
+    - Row A explicitly displays the full customer name (no truncate) alongside the status badge.
+    - Row B groups the garment summary and all primary action buttons for that specific item.
+  - Reduced the `ProductionView.tsx` file size to 399 lines, comfortably beneath the 500-line Rule 300/500 limit.
+  - Desktop row ledger layout remains 100% untouched.
+- **UI Architecture Update**: Updated mobile card drawer container classes in `ProductionView.tsx`.
+  - Configured drawer wrapper padding to `p-2.5 sm:p-3` for responsive spacing.
+  - Wrapped Filipina and Pantalón measurement blocks in a side-by-side grid (`grid grid-cols-1 sm:grid-cols-2 gap-3 w-full`).
+  - Maintained zero TypeScript errors and confirmed compliance with Rule 300/500 (399 lines).
