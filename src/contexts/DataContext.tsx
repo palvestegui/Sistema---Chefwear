@@ -3,7 +3,10 @@ import { collection, onSnapshot, query, orderBy, doc, Unsubscribe } from 'fireba
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
 import { Order, PricingData, FirebaseUserSubset } from '../types';
-import { ClientAccount, MasterContact } from '../types/crm'; // Need to check if firebase is exported from '../firebase'
+import { ClientAccount, MasterContact } from '../types/crm';
+import { runUdiFabricMigration } from '../utils/udiFabricMigration';
+
+let udiFabricVerified = false;
 
 export interface DataContextType {
   clientAccounts: ClientAccount[];
@@ -77,6 +80,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode, db: any }> = ({
 
       unsubs.push(onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), (snapshot) => {
         setOrders(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Order)));
+        
+        // Auto-heal UDI student fabric records if mislabeled
+        if (user && !udiFabricVerified) {
+          runUdiFabricMigration(db).then((res) => {
+            if (res.updatedCount > 0) {
+              console.log('[UDI-MIGRATION] Auto-healed orders:', res.messages);
+            }
+            if (res.alreadyCorrectCount === 3) {
+              udiFabricVerified = true;
+            }
+          }).catch((err: unknown) => {
+            console.warn('[UDI-MIGRATION] Background sync check:', err);
+          });
+        }
       }));
       
       unsubs.push(onSnapshot(doc(db, 'settings', 'sizeTables'), (snap) => {

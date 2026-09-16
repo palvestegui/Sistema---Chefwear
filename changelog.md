@@ -1,6 +1,19 @@
 ## [Unreleased]
+### Architectural (Dumb View Compliance)
+- **ActiveOrdersList.tsx Total Resolution**: Refactored line 99 in `ActiveOrdersList.tsx` to prioritize the committed Firestore database `totalPrice` (`order.totalPrice !== undefined && order.totalPrice !== null ? Number(order.totalPrice) : getOrderBreakdown(...).total`). Enforces the Dumb View architectural mandate, preventing runtime engine recalculations from falling back to retail catalog rates when custom fabrics (like UDI student uniform packages) are present, which previously caused balance discrepancies and false Bs 0.00 displays.
+
+### Migration & Data Integrity (UDI Student Fabric Correction)
+- **Liliana Montero Order Disambiguation (`src/utils/udiFabricMigration.ts`)**: Resolved multi-order collision where Liliana Montero had both an existing historical Pantalón order (already Drill de 8oz) and an active Filipina order (#ORD-00025). Enhanced candidate matching and added `requiredGarment: 'Filipina'` filtering so the migration specifically locates and patches the Filipina item in order #ORD-00025 (`ORD-1789145786489-650`) to "Drill de 8oz" with `totalPrice: 253`.
+- **Auto-Healing Sentinel Hardening (`DataContext.tsx`)**: Updated the auto-heal verification gate to require `alreadyCorrectCount === 3` before setting the session verification flag, ensuring all 3 UDI student records are verified correct.
+- **Engineered `src/utils/udiFabricMigration.ts`**: Built a typed migration utility to heal mislabeled fabric records and preserve financial totals in the Firestore `orders` collection:
+  - **#ORD-00025** (Liliana Montero / `ORD-1789145786489-650`): Patched `items[0].fabric` from `"Gabardina de 2da"` to `"Drill de 8oz"`. Total: Bs 253, Cobrado: Bs 200.
+  - **#ORD-00024** (Luciane Durán / `ORD-1789145868176-152`): Patched `items[0].fabric` from `"Gabardina de 2da"` to `"Drill de 8oz"`. Total: Bs 253, Cobrado: Bs 200.
+  - **#ORD-00021** (Mariana Santos / `ORD-1788533995246-669`): Patched `items[0].fabric` from `"Tornado (Bull Denim)"` to `"Drill de 6oz"`. Total: Bs 227.70, Cobrado: Bs 253.
+- **Auto-Healing Integration (`DataContext.tsx`)**: Bound automatic background check upon authenticated load, applying the patch idempotently and ensuring zero redundant writes once verified.
+- **Admin Manual Control (`DangerZoneSection.tsx`)**: Added manual trigger button `"Corregir Telas UDI (#21, #24, #25)"` within the settings danger zone for direct inspection and execution.
+
 ### Added
-- Implemented secure server-side \`Pulse\` Read-Only API endpoint (\`/api/pulse\`) for AI assistant auditing and metric retrieval.
+- Implemented secure server-side `Pulse` Read-Only API endpoint (`/api/pulse`) for AI assistant auditing and metric retrieval.
 - Converted application architecture to Full-Stack (Express + Vite) to support isolated, zero-hardcoding backend execution in Cloud Run.
 - Integrated \`firebase-admin\` in \`server.ts\` for backend Firestore execution, bypassing client \`firestore.rules\` strict boundaries safely.
 

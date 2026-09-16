@@ -96,7 +96,9 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
   return (
     <>
       {activeOrders.map(order => {
-        const total = getOrderBreakdown(order.items || [], order.pricingTier || order.category || order.clientType, order.paymentMethod, order.manualDiscount || 0, order.clientType, order.accountId, order.migrationFlatDiscount || 0).total;
+        const total = (order.totalPrice !== undefined && order.totalPrice !== null)
+          ? Number(order.totalPrice)
+          : getOrderBreakdown(order.items || [], order.pricingTier || order.category || order.clientType, order.paymentMethod, order.manualDiscount || 0, order.clientType, order.accountId, order.migrationFlatDiscount || 0).total;
         const collected = Number(order.amountCollected || 0);
         const pending = Math.max(0, total - collected);
 

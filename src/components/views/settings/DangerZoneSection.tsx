@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Trash2, Flame, History, Database } from 'lucide-react';
+import { Trash2, Flame, History, Database, CheckCircle2 } from 'lucide-react';
 import { MigrationModal } from '../../modals/MigrationModal';
+import { db } from '../../../firebase';
+import { runUdiFabricMigration } from '../../../utils/udiFabricMigration';
 
 export interface DangerZoneSectionProps {
   isResetConfirmOpen: boolean;
@@ -24,6 +26,26 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
   setIsMigrationMode
 }) => {
   const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [isFixingUdi, setIsFixingUdi] = useState(false);
+
+  const handleFixUdiFabrics = async () => {
+    setIsFixingUdi(true);
+    try {
+      const res = await runUdiFabricMigration(db);
+      if (res.updatedCount > 0) {
+        alert(`Corrección UDI aplicada con éxito (${res.updatedCount} órdenes actualizadas):\n\n${res.messages.join('\n')}`);
+      } else if (res.alreadyCorrectCount > 0) {
+        alert(`Las órdenes UDI ya se encuentran corregidas:\n\n${res.messages.join('\n')}`);
+      } else {
+        alert(`Resultado de la verificación:\n\n${res.messages.join('\n')}`);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Error al ejecutar la corrección: ${message}`);
+    } finally {
+      setIsFixingUdi(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -52,6 +74,15 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
               className="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition flex items-center justify-center gap-2 w-full sm:w-auto bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700"
             >
               <Database size={16}/> Importar JSON de Órdenes Históricas
+            </button>
+            <button
+              type="button"
+              onClick={handleFixUdiFabrics}
+              disabled={isFixingUdi}
+              className="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition flex items-center justify-center gap-2 w-full sm:w-auto bg-stone-800 text-amber-400 hover:bg-stone-750 border border-amber-500/30"
+            >
+              <CheckCircle2 size={16} className={isFixingUdi ? "animate-spin text-amber-400" : "text-amber-400"} />
+              {isFixingUdi ? 'Corrigiendo Telas...' : 'Corregir Telas UDI (#21, #24, #25)'}
             </button>
             </div>
           )}
