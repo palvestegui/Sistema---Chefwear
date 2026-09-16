@@ -3,6 +3,7 @@ import { Trash2, Flame, History, Database, CheckCircle2 } from 'lucide-react';
 import { MigrationModal } from '../../modals/MigrationModal';
 import { db } from '../../../firebase';
 import { runUdiFabricMigration } from '../../../utils/udiFabricMigration';
+import { runUdiReconciliationPatch } from '../../../utils/udiReconciliationPatch';
 
 export interface DangerZoneSectionProps {
   isResetConfirmOpen: boolean;
@@ -27,6 +28,7 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
 }) => {
   const [showMigrationModal, setShowMigrationModal] = useState(false);
   const [isFixingUdi, setIsFixingUdi] = useState(false);
+  const [isReconcilingUdi, setIsReconcilingUdi] = useState(false);
 
   const handleFixUdiFabrics = async () => {
     setIsFixingUdi(true);
@@ -44,6 +46,25 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
       alert(`Error al ejecutar la corrección: ${message}`);
     } finally {
       setIsFixingUdi(false);
+    }
+  };
+
+  const handleReconcileUdiOrders = async () => {
+    setIsReconcilingUdi(true);
+    try {
+      const res = await runUdiReconciliationPatch(db);
+      if (res.updatedCount > 0) {
+        alert(`Reconciliación UDI aplicada con éxito (${res.updatedCount} órdenes actualizadas):\n\n${res.messages.join('\n')}`);
+      } else if (res.alreadyReconciledCount > 0) {
+        alert(`Las órdenes UDI ya se encuentran reconciliadas (Saldo Bs 0.00):\n\n${res.messages.join('\n')}`);
+      } else {
+        alert(`Resultado de la verificación:\n\n${res.messages.join('\n')}`);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Error al ejecutar la reconciliación: ${message}`);
+    } finally {
+      setIsReconcilingUdi(false);
     }
   };
 
@@ -83,6 +104,15 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
             >
               <CheckCircle2 size={16} className={isFixingUdi ? "animate-spin text-amber-400" : "text-amber-400"} />
               {isFixingUdi ? 'Corrigiendo Telas...' : 'Corregir Telas UDI (#21, #24, #25)'}
+            </button>
+            <button
+              type="button"
+              onClick={handleReconcileUdiOrders}
+              disabled={isReconcilingUdi}
+              className="px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition flex items-center justify-center gap-2 w-full sm:w-auto bg-stone-800 text-emerald-400 hover:bg-stone-750 border border-emerald-500/30"
+            >
+              <CheckCircle2 size={16} className={isReconcilingUdi ? "animate-spin text-emerald-400" : "text-emerald-400"} />
+              {isReconcilingUdi ? 'Reconciliando...' : 'Reconciliar Sobrecobros UDI (#21, #22, #23)'}
             </button>
             </div>
           )}

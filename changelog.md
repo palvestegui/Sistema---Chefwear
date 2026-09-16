@@ -1,4 +1,15 @@
 ## [Unreleased]
+### UDI Order Financial Reconciliation Patch (`udiReconciliationPatch.ts`, `udiFabricMigration.ts`)
+- **Three-Order Reconciliation Engine**: Created dedicated, idempotent database reconciliation patch (`src/utils/udiReconciliationPatch.ts`) targeting the 3 overcollected UDI student orders in the Firestore `orders` collection:
+  - **#ORD-00021 (Mariana Santos / `ORD-1788533995246-669`)**: Set `totalPrice: 253` and `amountCollected: 253`. Removed legacy `reconciliationNote` using `deleteField()`. Leaves Saldo at **Bs 0.00**.
+  - **#ORD-00022 (Felipe Coronado / `ORD-1788534268408-593`)**: Set `totalPrice: 149` and `amountCollected: 149`. Removed legacy `reconciliationNote` using `deleteField()`. Leaves Saldo at **Bs 0.00**.
+  - **#ORD-00023 (Georgina González / `ORD-1788973360952-614`)**: Set `totalPrice: 584` and `amountCollected: 584` (verified via bank transfer slip). Removed legacy `reconciliationNote` using `deleteField()`. Leaves Saldo at **Bs 0.00**.
+- **UDI Fabric Migration Spec Alignment (`udiFabricMigration.ts`)**: Updated `UDI_CORRECTIONS` for Mariana Santos from `expectedTotal: 227.70` to `expectedTotal: 253` with `expectedCollected: 253`, and added `reconciliationNote: deleteField()` to prevent subsequent fabric healing runs from re-introducing overcollected balances.
+- **Autonomous Lifecycle Execution (`DataContext.tsx`)**: Wired `runUdiReconciliationPatch(db)` into the authenticated `orders` snapshot listener. Automatically heals and reconciles existing records without requiring manual intervention.
+- **Administrative Manual Trigger (`DangerZoneSection.tsx`)**: Added manual execution button (`Reconciliar Sobrecobros UDI (#21, #22, #23)`) in Settings > Danger Zone, providing clear alert modals on reconciliation progress and status.
+- **Type Safety (`src/types/index.ts`)**: Added optional `reconciliationNote?: string;` property to the root `Order` interface with zero usage of `any`.
+- **Architectural Rules**: Strictly maintained Rule 300/500 compliance across all touched files (`udiReconciliationPatch.ts`: 140 lines; `udiFabricMigration.ts`: 208 lines; `DataContext.tsx`: 147 lines; `DangerZoneSection.tsx`: 197 lines; `types/index.ts`: 274 lines).
+
 ### Exclusion Groups Modal In-Place Reactive State (`ExclusionGroupsModal.tsx`, `ServicesCatalogTab.tsx`)
 - **Reactive Rename State & Zero-Orphan Cleanup**: Enhanced `ExclusionGroupsModal.tsx` to maintain local reactive state (`activeGroups` and `localServices`) so confirming a group rename (e.g., `REGULADOR` -> `DISTRIBUIDOR`) immediately swaps the code in-place with `prev.map(g => g === oldName ? newName : g)`. Default codes that no longer have assigned services are no longer orphaned or retained with "0 servicios".
 - **Dynamic Catalog Exclusions Preference (`ServicesCatalogTab.tsx`)**: Refactored `availableExclusionGroups` to prefer `customExclusionGroups` once customized, preventing unassigned default groups from resurrecting in service card dropdowns.

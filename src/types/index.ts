@@ -178,6 +178,7 @@ export interface Order {
   subtotal?: number;
   totalDiscount?: number;
   amountCollected?: number;
+  reconciliationNote?: string;
   paymentHistory?: PaymentEntry[];
   timestamps?: Record<string, string>;
   createdAt?: number | string;

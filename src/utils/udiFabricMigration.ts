@@ -1,4 +1,4 @@
-import { doc, updateDoc, collection, getDocs, Firestore } from 'firebase/firestore';
+import { doc, updateDoc, collection, getDocs, deleteField, Firestore } from 'firebase/firestore';
 import { OrderItem } from '../types';
 
 export interface FabricCorrectionSpec {
@@ -34,7 +34,7 @@ export const UDI_CORRECTIONS: FabricCorrectionSpec[] = [
     rawId: 'ORD-1788533995246-669',
     customerName: 'Mariana Santos',
     targetFabric: 'Drill de 6oz',
-    expectedTotal: 227.70,
+    expectedTotal: 253,
     expectedCollected: 253,
   },
 ];
@@ -147,6 +147,7 @@ export async function runUdiFabricMigration(db: Firestore): Promise<MigrationRes
         items: updatedItems,
         totalPrice: spec.expectedTotal,
         amountCollected: spec.expectedCollected,
+        reconciliationNote: deleteField(),
         updatedAt: Date.now(),
       });
 

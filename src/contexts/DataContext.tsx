@@ -5,8 +5,10 @@ import { useAuth } from './AuthContext';
 import { Order, PricingData, FirebaseUserSubset } from '../types';
 import { ClientAccount, MasterContact } from '../types/crm';
 import { runUdiFabricMigration } from '../utils/udiFabricMigration';
+import { runUdiReconciliationPatch } from '../utils/udiReconciliationPatch';
 
 let udiFabricVerified = false;
+let udiReconciliationVerified = false;
 
 export interface DataContextType {
   clientAccounts: ClientAccount[];
@@ -87,11 +89,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode, db: any }> = ({
             if (res.updatedCount > 0) {
               console.log('[UDI-MIGRATION] Auto-healed orders:', res.messages);
             }
-            if (res.alreadyCorrectCount === 3) {
+            if (res.alreadyCorrectCount >= 3) {
               udiFabricVerified = true;
             }
           }).catch((err: unknown) => {
             console.warn('[UDI-MIGRATION] Background sync check:', err);
+          });
+        }
+
+        // Auto-reconcile overcollected UDI orders to ensure Saldo Bs 0.00
+        if (user && !udiReconciliationVerified) {
+          runUdiReconciliationPatch(db).then((res) => {
+            if (res.updatedCount > 0) {
+              console.log('[UDI-RECONCILIATION] Reconciled orders:', res.messages);
+            }
+            if (res.alreadyReconciledCount === 3) {
+              udiReconciliationVerified = true;
+            }
+          }).catch((err: unknown) => {
+            console.warn('[UDI-RECONCILIATION] Background sync check:', err);
           });
         }
       }));
