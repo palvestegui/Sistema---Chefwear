@@ -6,6 +6,8 @@ const {
 } = LucideIcons;
 import { StatusBadge } from '../ui/StatusBadge';
 import { consolidateCommercialItems } from '../../utils/orderItemConsolidation';
+import { useData } from '../../contexts/DataContext';
+import { detectServiceExclusionConflicts } from '../../utils/serviceUtils';
 
 export interface ProductionViewProps {
   orders: any[];
@@ -109,6 +111,7 @@ const DesktopMeasurementInline = ({ label, specs, isPan }: { label: string, spec
 
 export const ProductionView: React.FC<ProductionViewProps> = (props) => {
   const { orders, isWriteDisabled, updateStatus, setViewingInvoiceId, setViewingLogosOrderId, setExpandedLogoUrl, onOpenEditRoster } = props;
+  const { pricing } = useData();
   const [expandedMeasurements, setExpandedMeasurements] = useState<Record<string, boolean>>({});
   const [expandedRosterOrderId, setExpandedRosterOrderId] = useState<string | null>(null);
 
@@ -182,8 +185,34 @@ export const ProductionView: React.FC<ProductionViewProps> = (props) => {
                     <div className="scale-90 origin-left">
                       {isFirst && <StatusBadge status={order.status} />}
                     </div>
-                    <div className="text-xs text-stone-300 font-bold truncate">
-                      <span className="text-amber-500/80 mr-1">x{item.qty || 1}</span> {item.name} <span className="text-[10px] text-stone-500 font-mono block truncate">{item.fabric || 'Drill 8oz'}</span>
+                    <div className="text-xs text-stone-300 font-bold min-w-0">
+                      <div className="truncate">
+                        <span className="text-amber-500/80 mr-1">x{item.qty || 1}</span> {item.name} <span className="text-[10px] text-stone-500 font-mono block truncate">{item.fabric || 'Drill 8oz'}</span>
+                      </div>
+                      {item.services && item.services.length > 0 && (() => {
+                        const conflicts = detectServiceExclusionConflicts(item.services, pricing?.services);
+                        const conflictingSet = new Set(conflicts.flatMap(c => c.services));
+                        return (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {conflicts.map(c => (
+                              <span
+                                key={`conflict-${c.group}`}
+                                className="text-[9px] font-black text-amber-300 bg-amber-950/90 border border-amber-500/70 px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1 animate-pulse"
+                                title={`Conflicto en grupo ${c.group}: Se seleccionaron múltiples opciones incompatibles`}
+                              >
+                                ⚠️ Conflicto: {c.services.join(' / ')}
+                              </span>
+                            ))}
+                            {item.services
+                              .filter((srv: string) => !conflictingSet.has(srv))
+                              .map((srv: string, sIdx: number) => (
+                                <span key={sIdx} className="text-[9px] font-bold text-amber-400 bg-stone-900 border border-stone-800 px-1.5 py-0.5 rounded">
+                                  {srv}
+                                </span>
+                              ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div>
                       {isCustom ? (
@@ -276,13 +305,39 @@ export const ProductionView: React.FC<ProductionViewProps> = (props) => {
                     {/* Row B (Garment Summary & Buttons) */}
                     <div className="flex flex-col sm:flex-row landscape:flex-row items-start sm:items-center landscape:items-center justify-between gap-2 w-full py-0.5">
                       {/* Garment Title - Takes full row in portrait, inline in landscape */}
-                      <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto landscape:w-auto">
-                        <span className="font-bold text-xs sm:text-sm text-stone-200 uppercase whitespace-normal leading-tight">
-                          {item.name}
-                        </span>
-                        <span className="text-[10px] font-mono text-amber-500 bg-stone-950 px-1.5 py-0.5 rounded border border-stone-800 shrink-0">
-                          x{item.qty || 1} {item.fabric ? `• ${item.fabric}` : ''}
-                        </span>
+                      <div className="flex flex-col gap-1 w-full sm:w-auto landscape:w-auto">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-xs sm:text-sm text-stone-200 uppercase whitespace-normal leading-tight">
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-amber-500 bg-stone-950 px-1.5 py-0.5 rounded border border-stone-800 shrink-0">
+                            x{item.qty || 1} {item.fabric ? `• ${item.fabric}` : ''}
+                          </span>
+                        </div>
+                        {item.services && item.services.length > 0 && (() => {
+                          const conflicts = detectServiceExclusionConflicts(item.services, pricing?.services);
+                          const conflictingSet = new Set(conflicts.flatMap(c => c.services));
+                          return (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {conflicts.map(c => (
+                                <span
+                                  key={`m-conflict-${c.group}`}
+                                  className="text-[9px] font-black text-amber-300 bg-amber-950/90 border border-amber-500/70 px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1 animate-pulse"
+                                  title={`Conflicto en grupo ${c.group}: Se seleccionaron múltiples opciones incompatibles`}
+                                >
+                                  ⚠️ Conflicto: {c.services.join(' / ')}
+                                </span>
+                              ))}
+                              {item.services
+                                .filter((srv: string) => !conflictingSet.has(srv))
+                                .map((srv: string, sIdx: number) => (
+                                  <span key={sIdx} className="text-[9px] font-bold text-amber-400 bg-stone-950 border border-stone-800 px-1.5 py-0.5 rounded">
+                                    {srv}
+                                  </span>
+                                ))}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Action Controls - Full-width right-aligned in portrait, inline in landscape */}

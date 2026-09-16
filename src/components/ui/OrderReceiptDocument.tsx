@@ -98,6 +98,8 @@ export const OrderReceiptDocument = ({
                      <div className="flex flex-col gap-1 pl-10">
                         {it.services.filter((s: string) => {
                            const srv = pricing.services?.find((x: any) => x.name === s && x.garment === it.name) || pricing.services?.find((x: any) => x.name === s && x.garment === 'Global') || pricing.services?.find((x: any) => x.name === s);
+                           const hasCustomPrice = Boolean(it.customServicePrices && Number(it.customServicePrices[s]) > 0);
+                           if (hasCustomPrice) return false;
                            return !srv || srv.type === 'Opción de Confección' || srv.type === 'Variante Base';
                         }).map((s:string) => {
                            let lbl = s;
@@ -115,12 +117,16 @@ export const OrderReceiptDocument = ({
                      <div className="flex flex-col gap-1 pl-10 mt-1">
                         {it.services.filter((s: string) => {
                            const srv = pricing.services?.find((x: any) => x.name === s && x.garment === it.name) || pricing.services?.find((x: any) => x.name === s && x.garment === 'Global') || pricing.services?.find((x: any) => x.name === s);
+                           const hasCustomPrice = Boolean(it.customServicePrices && Number(it.customServicePrices[s]) > 0);
+                           if (hasCustomPrice) return true;
                            return (!srv && s.toUpperCase().includes('LOGO')) || (srv && (srv.type === 'Costo Adicional' || srv.type === 'Costo Adicional Editable' || srv.type === 'Escala de Volumen (Logos)'));
                         }).map((s:string) => {
                            let lbl = s;
                            if (s.toLowerCase().includes('bolsillo') && it.pocketName) lbl = `${s}: ${it.pocketName}`;
                            if (s === 'Bolsillos personalizados' && it.customPocketDetails) lbl = `${s}: ${it.customPocketDetails}`;
-                           const customPrice = getServiceUnitPrice(s, it, order.items);
+                           const customPrice = (it.customServicePrices && it.customServicePrices[s] !== undefined && Number(it.customServicePrices[s]) > 0)
+                              ? Number(it.customServicePrices[s])
+                              : getServiceUnitPrice(s, it, order.items);
                            return (
                               <div key={s} className="flex justify-between items-center">
                                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#44403c' }}>· {lbl} <span className="font-mono text-stone-400 font-bold ml-1" style={{ color: '#57534e' }}><span className="normal-case">Bs</span>{customPrice.toFixed(2)}</span></span>
@@ -128,6 +134,31 @@ export const OrderReceiptDocument = ({
                               </div>
                            );
                         })}
+                     </div>
+                   )}
+                   {it.embroideries && it.embroideries.length > 0 && (
+                     <div className="flex flex-col gap-1 pl-10 mt-1">
+                       {it.embroideries.map((emb: string, eIdx: number) => {
+                         let embName = emb;
+                         let embPrice = 0;
+                         if (emb.startsWith('Otro:')) {
+                           const parts = emb.split('|');
+                           embName = parts[0].replace('Otro:', '').trim();
+                           if (parts.length === 2) embPrice = parseFloat(parts[1]) || 0;
+                         }
+                         return (
+                           <div key={`emb-${eIdx}`} className="flex justify-between items-center">
+                             <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#44403c' }}>
+                               · {embName} {embPrice > 0 && <span className="font-mono text-stone-400 font-bold ml-1" style={{ color: '#57534e' }}><span className="normal-case">Bs</span>{embPrice.toFixed(2)}</span>}
+                             </span>
+                             {embPrice > 0 && (
+                               <span className="font-mono text-[10px] font-bold" style={{ color: '#1c1917' }}>
+                                 <span className="normal-case">Bs</span>{(embPrice * (it.qty || 1)).toFixed(2)}
+                               </span>
+                             )}
+                           </div>
+                         );
+                       })}
                      </div>
                    )}
                  </div>

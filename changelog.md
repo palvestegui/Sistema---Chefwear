@@ -1,4 +1,46 @@
 ## [Unreleased]
+### Exclusion Groups Modal In-Place Reactive State (`ExclusionGroupsModal.tsx`, `ServicesCatalogTab.tsx`)
+- **Reactive Rename State & Zero-Orphan Cleanup**: Enhanced `ExclusionGroupsModal.tsx` to maintain local reactive state (`activeGroups` and `localServices`) so confirming a group rename (e.g., `REGULADOR` -> `DISTRIBUIDOR`) immediately swaps the code in-place with `prev.map(g => g === oldName ? newName : g)`. Default codes that no longer have assigned services are no longer orphaned or retained with "0 servicios".
+- **Dynamic Catalog Exclusions Preference (`ServicesCatalogTab.tsx`)**: Refactored `availableExclusionGroups` to prefer `customExclusionGroups` once customized, preventing unassigned default groups from resurrecting in service card dropdowns.
+
+### On-Screen Invoice Custom Pricing & Embroideries Alignment (`InvoiceModal.tsx`)
+- **Custom Service Price Transparency**: Mirrored the custom service pricing engine from `OrderReceiptDocument.tsx` into `InvoiceModal.tsx`. Services with custom pricing (`hasCustomPrice === true`) are strictly filtered out of the unpriced tailoring options block and included in the paid add-on services block with their designated unit price (`Bs {customPrice.toFixed(2)}`) and extended line total (`Bs {(customPrice * qty).toFixed(2)}`).
+- **Embroideries Rendering**: Added explicit rendering for `it.embroideries` to display custom embroideries with unit and extended pricing in the on-screen invoice modal.
+- **Dedicated Exclusion Groups Modal (`ExclusionGroupsModal.tsx`)**: Created a dedicated administrative modal allowing users to manage canonical exclusion groups, create new groups, rename groups with automatic batch cascading to all assigned services, and delete unused groups with active service count safety warnings.
+- **Zero-Truncation 3-Tier Card Architecture (`ServicesCatalogTab.tsx`)**: Overhauled service cards from cramped single-row configurations into a 3-tier hierarchy:
+  - **Tier 1 (Header)**: ID badge + full-width service name input (`flex-1`, no truncation, generous input area) + delete button with inline confirmation.
+  - **Tier 2**: Garment compatibility button (`ServiceAppliesToModal` launcher), service type selector, and price input in Bs.
+  - **Tier 3**: Dedicated standalone exclusion group dropdown with direct link to launch the Exclusion Groups Manager.
+- **Stable React Keys**: Enforced `key={`service-card-${originalIndex}`}` across all service cards, eliminating input unmounting and 1-character focus-loss bugs while typing.
+
+### Production View Conflict Shield (`ProductionView.tsx`)
+- **Floor Conflict Shield**: Integrated `detectServiceExclusionConflicts` from `serviceUtils.ts` into both Desktop and Mobile views. If an order item contains conflicting services in the same exclusion group (e.g. "Manga larga" and "Manga 3/4"), a high-visibility amber pulsing warning badge (`⚠️ Conflicto: Manga larga / Manga 3/4`) is rendered, alerting cutting and sewing operators to pause before cutting.
+
+### Client Invoice & PDF Price Transparency (`OrderReceiptDocument.tsx`)
+- **Custom Service Price Transparency**: Hardened `OrderReceiptDocument.tsx` so custom-priced services (`hasCustomPrice === true` via `it.customServicePrices[s]`) and custom embroideries (`it.embroideries`) render their respective unit prices (`Bs {price}`) and calculated line totals (`Bs {price * qty}`) directly on printed and downloaded PDF receipts, matching the on-screen card display.
+
+### Data Migration & Order Resolution (`udiFabricMigration.ts`)
+- **Order #ORD-00018 Conflict Resolution (Sebas Bejarano)**: Implemented idempotent patch in client Firestore migration engine (`udiFabricMigration.ts`) targeting `#ORD-00018` (`ORD-1788275936872-173`). Automatically purges the conflicting service `"Manga larga"`, safely preserving `"Manga 3/4"` and `"Broches metálicos ocultos"`.
+
+### Role-Based Default Landing Tab (`App.tsx`)
+- **Automated Role Landing**: Implemented single-execution `useEffect` via `hasSetInitialLandingTab` ref that automatically routes authenticated users to their corresponding workspace on load:
+  - `VENTAS` -> `'ventas'`
+  - `OPERACIONES` -> `'operaciones'`
+  - `PRODUCCION` -> `'produccion'`
+  - `ADMIN` / `SUPERADMIN` -> `activeViewRole` (or `'ventas'` if full admin).
+
+### Settings & Catalog Engine (Services Management & Exclusion Groups)
+- **Stable Input Reconciliation (`ServicesCatalogTab.tsx`)**: Replaced volatile dynamic keys (`key={`${srv.name || 'srv'}-${originalIndex}}``) with stable keys (`key={`service-card-${originalIndex}}``), resolving input unmounting and single-character focus-loss bugs while typing service names.
+- **Service Name Readability (`ServicesCatalogTab.tsx`)**: Removed rigid `truncate` class constraints and added full-string HTML `title` tooltips, permitting full visibility for lengthy service names (e.g., cross straps, inner pocket magnets).
+- **Managed Exclusion Groups Architecture (`serviceUtils.ts`, `ServicesCatalogTab.tsx`)**: Replaced raw free-form text input with a controlled uppercase dropdown incorporating canonical default groups (`DEFAULT_EXCLUSION_GROUPS`: `MANGA`, `CUELLO`, `TIROS`, `BOLSILLO`, `ESPALDA`, `CIERRE`, `PECHERA`, `BOTONES`, `VIVO`), dynamically aggregated existing custom groups, and an inline modal workflow (`+ Crear nuevo grupo...`) to enforce catalog hygiene and eliminate casing/whitespace fragmentation.
+- **Mutual Exclusion Engine (`GarmentConfigurator.tsx`)**: Upgraded selection resolver to sanitize and compare `exclusionGroup.trim().toUpperCase()`, instantly deselecting any active service sharing the same exclusion group on the configured item.
+
+### Production View & Floor Visibility (`ProductionView.tsx`)
+- **Tailoring Add-ons Micro-Badges**: Rendered `item.services` as a compact badge strip (`text-[9px] font-bold text-amber-400 bg-stone-900 border border-stone-800 px-1.5 py-0.5 rounded`) immediately below fabric descriptors in both Desktop Ledger and Mobile Production Cards. Ensures cutting and assembly operators have immediate visual confirmation of sleeve lengths, custom closures, and tailoring options directly on the production floor.
+
+### Invoicing & Financial Display (`OrderReceiptDocument.tsx`, `ActiveOrdersList.tsx`, `QuotesList.tsx`)
+- **Custom Service Price Transparency**: Hardened service rendering guards across receipts, active orders, and quotations to verify `hasCustomPrice = Boolean(it.customServicePrices && Number(it.customServicePrices[s]) > 0)`. Prevents custom-priced tailoring services from being incorrectly relegated to unpriced construction options, ensuring line-item amounts and prices are rendered visibly on official documents.
+
 ### Architectural (Dumb View Compliance)
 - **ActiveOrdersList.tsx Total Resolution**: Refactored line 99 in `ActiveOrdersList.tsx` to prioritize the committed Firestore database `totalPrice` (`order.totalPrice !== undefined && order.totalPrice !== null ? Number(order.totalPrice) : getOrderBreakdown(...).total`). Enforces the Dumb View architectural mandate, preventing runtime engine recalculations from falling back to retail catalog rates when custom fabrics (like UDI student uniform packages) are present, which previously caused balance discrepancies and false Bs 0.00 displays.
 

@@ -187,8 +187,10 @@ export const GarmentConfigurator: React.FC<GarmentConfiguratorProps> = ({
                   
                   if (!isActive) {
                       if (srv.exclusionGroup) {
-                          const conflictingNames = pricing.services.filter((s:any) => s.exclusionGroup === srv.exclusionGroup && s.name !== srv.name).map((s:any) => s.name);
-                          newServices = newServices.filter((x:any) => !conflictingNames.includes(x));
+                          const conflictingNames = (pricing?.services || [])
+                              .filter((s: any) => s.exclusionGroup && s.exclusionGroup.trim().toUpperCase() === srv.exclusionGroup.trim().toUpperCase() && s.name !== srv.name)
+                              .map((s: any) => s.name);
+                          newServices = newServices.filter((x: any) => !conflictingNames.includes(x));
                       } else {
                           if (srv.name.includes('Tiros cruzados')) {
                               newServices = newServices.filter((x:any) => !x.includes('Tiros sencillos') && (x === srv.name || !x.includes('Tiros cruzados')));

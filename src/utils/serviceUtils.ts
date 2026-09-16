@@ -4,7 +4,7 @@
  */
 
 export interface ServiceItem {
-  name: string;
+  name?: string;
   garment?: string;
   type?: string;
   price?: number | null;
@@ -12,6 +12,7 @@ export interface ServiceItem {
   isGlobal?: boolean;
   appliesToStandard?: string[];
   appliesToSpecial?: Record<string, string[]>;
+  [key: string]: unknown;
 }
 
 /**
@@ -72,53 +73,34 @@ export const isServiceApplicable = (
   }
 ): boolean => {
   if (!service) return false;
-
   const { garmentName, presetKey, isUdiMode } = context;
   const isUdiBundle = garmentName === 'Uniforme Completo UDI';
   const effectivePreset = presetKey || (isUdiMode || isUdiBundle ? 'UDI Especial' : null);
 
-  // Case 1: Global Service
   if (service.isGlobal === true || service.garment === 'Global') {
-    // If the service has explicit special overrides for the active preset
-    if (effectivePreset && service.appliesToSpecial && service.appliesToSpecial[effectivePreset]) {
-      const allowedInPreset = service.appliesToSpecial[effectivePreset];
-      if (Array.isArray(allowedInPreset)) {
-        if (allowedInPreset.length === 0) return false;
+    if (effectivePreset && service.appliesToSpecial?.[effectivePreset]) {
+      const allowed = service.appliesToSpecial[effectivePreset];
+      if (Array.isArray(allowed)) {
+        if (allowed.length === 0) return false;
         if (isUdiBundle) return true;
-        return allowedInPreset.some(g => g.toLowerCase() === garmentName.toLowerCase());
+        return allowed.some((g: string) => g.toLowerCase() === garmentName.toLowerCase());
       }
     }
-    // If it has explicit standard overrides for Tab A
     if (!effectivePreset && service.appliesToStandard && Array.isArray(service.appliesToStandard)) {
       if (service.appliesToStandard.length === 0) return false;
-      return service.appliesToStandard.some(g => g.toLowerCase() === garmentName.toLowerCase());
+      return service.appliesToStandard.some((g: string) => g.toLowerCase() === garmentName.toLowerCase());
     }
     return true;
   }
 
-  // Case 2: Special Preset context (Tab B) or Uniforme Completo UDI
   if (effectivePreset) {
     if (service.appliesToSpecial && Array.isArray(service.appliesToSpecial[effectivePreset])) {
       const allowedList = service.appliesToSpecial[effectivePreset];
-      if (isUdiBundle) {
-        // Uniforme Completo UDI combines all garments in the preset:
-        // Any service applicable to ANY garment of the preset is applicable to the bundle!
-        return allowedList.length > 0;
-      }
-      return allowedList.some(g => g.toLowerCase() === garmentName.toLowerCase());
+      if (isUdiBundle) return allowedList.length > 0;
+      return allowedList.some((g: string) => g.toLowerCase() === garmentName.toLowerCase());
     }
-
-    // Fallback for legacy UDI presets
     if (effectivePreset === 'UDI Especial' || isUdiMode || isUdiBundle) {
-      const defaultUdi = [
-        'Tiros sencillos (estándar)',
-        'Tiros cruzados',
-        'Regulador de Cuero',
-        'Regulador de Argolla de Metal',
-        'Nombre en el bolsillo',
-        'Jogger',
-        'Botón/Cierre'
-      ];
+      const defaultUdi = ['Tiros sencillos (estándar)', 'Tiros cruzados', 'Regulador de Cuero', 'Regulador de Argolla de Metal', 'Nombre en el bolsillo', 'Jogger', 'Botón/Cierre'];
       if (defaultUdi.some(u => u.toLowerCase() === (service.name || '').toLowerCase())) {
         if (!service.garment || service.garment === 'Global' || isUdiBundle || service.garment.toLowerCase() === garmentName.toLowerCase()) {
           return true;
@@ -128,17 +110,10 @@ export const isServiceApplicable = (
     return false;
   }
 
-  // Case 3: Standard Tab A context
   if (service.appliesToStandard && Array.isArray(service.appliesToStandard)) {
-    return service.appliesToStandard.some(g => g.toLowerCase() === garmentName.toLowerCase());
+    return service.appliesToStandard.some((g: string) => g.toLowerCase() === garmentName.toLowerCase());
   }
-
-  // Legacy fallback based on srv.garment
-  if (service.garment === 'Global' || (service.garment && service.garment.toLowerCase() === garmentName.toLowerCase())) {
-    return true;
-  }
-
-  return false;
+  return service.garment === 'Global' || (service.garment && service.garment.toLowerCase() === garmentName.toLowerCase());
 };
 
 /**
@@ -182,4 +157,125 @@ export const getApplicabilitySummary = (
   }
 
   return parts.join(' | ');
+};
+
+export const DEFAULT_EXCLUSION_GROUPS: string[] = [
+  'MANGA', 'TIROS', 'REGULADOR', 'CUELLO', 'TELA DEPORTIVA', 'CIERRE', 'BOLSILLO', 'ESPALDA', 'PECHERA', 'BOTONES', 'VIVO'
+];
+
+export type ServiceCategoryKey = 'ALL' | 'FILIPINAS' | 'MANDILES' | 'PANTALONES' | 'GORROS' | 'BORDADOS' | 'OTROS';
+
+export const CATEGORY_FILTERS: Array<{ key: ServiceCategoryKey; label: string }> = [
+  { key: 'ALL', label: 'Todos' },
+  { key: 'FILIPINAS', label: 'Filipinas' },
+  { key: 'MANDILES', label: 'Mandiles' },
+  { key: 'PANTALONES', label: 'Pantalones' },
+  { key: 'GORROS', label: 'Gorros' },
+  { key: 'BORDADOS', label: 'Bordados & Logos' },
+  { key: 'OTROS', label: 'Especiales / Otros' },
+];
+
+export const normalizeText = (text: string | undefined | null): string => {
+  return String(text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+};
+
+export const matchesCategory = (srv: ServiceItem, category: ServiceCategoryKey): boolean => {
+  if (category === 'ALL') return true;
+
+  const name = normalizeText(srv.name);
+  const garment = normalizeText(srv.garment);
+  const group = normalizeText(srv.exclusionGroup);
+  const stdList = Array.isArray(srv.appliesToStandard)
+    ? srv.appliesToStandard.map(normalizeText)
+    : [];
+
+  const isBordado =
+    srv.type === 'Escala de Volumen (Logos)' ||
+    name.includes('bordad') || name.includes('logo') || name.includes('matriz') ||
+    name.includes('estampad') || name.includes('vinil') || name.includes('ponchad') ||
+    group.includes('bordad') || group.includes('logo');
+
+  if (category === 'BORDADOS') {
+    return isBordado;
+  }
+
+  const isGorro =
+    name.includes('gorro') || name.includes('cofia') || name.includes('bandana') ||
+    name.includes('boina') || name.includes('toca') || garment.includes('gorro') || garment.includes('cofia') ||
+    (stdList.length > 0 && stdList.some(g => g.includes('gorro') || g.includes('cofia')));
+
+  if (category === 'GORROS') {
+    return isGorro;
+  }
+
+  const isPantalon =
+    name.includes('pantalon') || name.includes('jogger') || name.includes('pretina') ||
+    garment.includes('pantalon') ||
+    (stdList.length > 0 && stdList.some(g => g.includes('pantalon')));
+
+  if (category === 'PANTALONES') {
+    return isPantalon;
+  }
+
+  const isMandil =
+    name.includes('mandil') || name.includes('delantal') || name.includes('tiro') ||
+    name.includes('argolla') || name.includes('cuero') || name.includes('regulador') ||
+    garment.includes('mandil') || group.includes('tiro') ||
+    (stdList.length > 0 && stdList.some(g => g.includes('mandil')));
+
+  if (category === 'MANDILES') {
+    return isMandil;
+  }
+
+  const isFilipina =
+    name.includes('filipina') || name.includes('manga') || name.includes('cuello') ||
+    name.includes('pechera') || name.includes('broche') || name.includes('vivo') ||
+    garment.includes('filipina') || group.includes('manga') || group.includes('cuello') ||
+    (stdList.length > 0 && stdList.some(g => g.includes('filipina')));
+
+  if (category === 'FILIPINAS') {
+    return isFilipina;
+  }
+
+  if (category === 'OTROS') {
+    const isSpecific = isBordado || isGorro || isPantalon || isMandil || isFilipina;
+    const isExplicitlyOther =
+      srv.isGlobal === true ||
+      srv.garment === 'Global' ||
+      Boolean(srv.appliesToSpecial && Object.keys(srv.appliesToSpecial).length > 0) ||
+      srv.type === 'Variante Base';
+    return !isSpecific || isExplicitlyOther;
+  }
+
+  return true;
+};
+
+export interface ExclusionConflict {
+  group: string;
+  services: string[];
+}
+
+export const detectServiceExclusionConflicts = (
+  services: string[] | undefined | null,
+  catalogServices?: ServiceItem[]
+): ExclusionConflict[] => {
+  if (!services || !Array.isArray(services) || services.length < 2) return [];
+  const map: Record<string, string[]> = {};
+  services.forEach(srvName => {
+    if (!srvName) return;
+    const cat = catalogServices?.find(c => c.name === srvName);
+    const grp = cat?.exclusionGroup?.trim().toUpperCase() ||
+      (srvName.toLowerCase().includes('manga') ? 'MANGA' : srvName.toLowerCase().includes('cuello') ? 'CUELLO' : '');
+    if (grp) {
+      if (!map[grp]) map[grp] = [];
+      map[grp].push(srvName);
+    }
+  });
+  return Object.entries(map)
+    .filter(([_, list]) => list.length > 1)
+    .map(([group, list]) => ({ group, services: list }));
 };

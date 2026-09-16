@@ -131,6 +131,8 @@ export const QuotesList: React.FC<QuotesListProps> = ({
                      <div className="flex flex-col gap-1 pl-4 mt-1">
                         {it.services.filter(s => {
                            const srv = pricing?.services?.find(x => x.name === s && x.garment === it.name) || pricing?.services?.find(x => x.name === s && x.garment === 'Global') || pricing?.services?.find(x => x.name === s);
+                           const hasCustomPrice = Boolean(it.customServicePrices && Number(it.customServicePrices[s]) > 0);
+                           if (hasCustomPrice) return true;
                            return (!srv && s.toUpperCase().includes('LOGO')) || (srv && (srv.type === 'Costo Adicional' || srv.type === 'Costo Adicional Editable' || srv.type === 'Escala de Volumen (Logos)'));
                         }).map(s => {
                            let lbl = s;

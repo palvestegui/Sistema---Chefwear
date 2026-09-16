@@ -153,6 +153,50 @@ export async function runUdiFabricMigration(db: Firestore): Promise<MigrationRes
       result.updatedCount++;
       result.messages.push(`Actualizado ${spec.orderNum} (${spec.customerName}): Tela cambiada a "${spec.targetFabric}", Total: Bs ${spec.expectedTotal}, Cobrado: Bs ${spec.expectedCollected}.`);
     }
+
+    // MIGRATION OVERRIDE: Patch Order #ORD-00018 (Sebas Bejarano) - remove conflicting "Manga larga", keeping "Manga 3/4"
+    const sebasDocs = ordersSnap.docs.filter((d) => {
+      const data = d.data();
+      const docId = d.id;
+      const dataId = typeof data.id === 'string' ? data.id : '';
+      const customer = typeof data.customer === 'string' ? data.customer.toLowerCase() : '';
+      return (
+        docId === 'ORD-1788275936872-173' ||
+        docId === 'ORD-00018' ||
+        dataId === '#ORD-00018' ||
+        dataId === 'ORD-00018' ||
+        customer.includes('sebas bejarano') ||
+        customer.includes('sebastian bejarano')
+      );
+    });
+
+    for (const sebasDoc of sebasDocs) {
+      const data = sebasDoc.data();
+      const currentItems = Array.isArray(data.items) ? (data.items as OrderItem[]) : [];
+      let itemUpdated = false;
+      const updatedItems = currentItems.map((item) => {
+        if (Array.isArray(item.services) && item.services.includes('Manga larga')) {
+          itemUpdated = true;
+          return {
+            ...item,
+            services: item.services.filter((s: string) => s !== 'Manga larga'),
+          };
+        }
+        return item;
+      });
+
+      if (itemUpdated) {
+        await updateDoc(doc(db, 'orders', sebasDoc.id), {
+          items: updatedItems,
+          updatedAt: Date.now(),
+        });
+        result.updatedCount++;
+        result.messages.push(`Actualizado #ORD-00018 (Sebas Bejarano): Se removió el servicio en conflicto "Manga larga", conservando "Manga 3/4".`);
+      } else {
+        result.alreadyCorrectCount++;
+        result.messages.push(`#ORD-00018 (Sebas Bejarano) ya no tiene servicios en conflicto.`);
+      }
+    }
   } catch (error) {
     result.success = false;
     const msg = error instanceof Error ? error.message : String(error);

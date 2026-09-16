@@ -1,7 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Globe, Layers, Search, X, Trash2, Sliders, CheckCircle2 } from 'lucide-react';
 import { ServiceAppliesToModal } from './ServiceAppliesToModal';
-import { getApplicabilitySummary } from '../../../utils/serviceUtils';
+import { ExclusionGroupsModal } from './ExclusionGroupsModal';
+import {
+  getApplicabilitySummary,
+  DEFAULT_EXCLUSION_GROUPS,
+  CATEGORY_FILTERS,
+  ServiceCategoryKey,
+  matchesCategory,
+  normalizeText
+} from '../../../utils/serviceUtils';
 
 export interface ServiceItemData {
   name?: string;
@@ -18,6 +26,7 @@ export interface ServiceItemData {
 export interface ServicesCatalogTabProps {
   settingsForm: {
     services?: ServiceItemData[];
+    exclusionGroups?: string[];
     garments?: Record<string, unknown>;
     specialPresets?: Record<string, Record<string, unknown>>;
     udiPricing?: Record<string, unknown>;
@@ -25,97 +34,6 @@ export interface ServicesCatalogTabProps {
   };
   setSettingsForm: React.Dispatch<React.SetStateAction<unknown>>;
 }
-
-type ServiceCategoryKey = 'ALL' | 'FILIPINAS' | 'MANDILES' | 'PANTALONES' | 'GORROS' | 'BORDADOS' | 'OTROS';
-
-const CATEGORY_FILTERS: Array<{ key: ServiceCategoryKey; label: string }> = [
-  { key: 'ALL', label: 'Todos' },
-  { key: 'FILIPINAS', label: 'Filipinas' },
-  { key: 'MANDILES', label: 'Mandiles' },
-  { key: 'PANTALONES', label: 'Pantalones' },
-  { key: 'GORROS', label: 'Gorros' },
-  { key: 'BORDADOS', label: 'Bordados & Logos' },
-  { key: 'OTROS', label: 'Especiales / Otros' },
-];
-
-const normalizeText = (text: string | undefined | null): string => {
-  return String(text || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
-};
-
-const matchesCategory = (srv: ServiceItemData, category: ServiceCategoryKey): boolean => {
-  if (category === 'ALL') return true;
-
-  const name = normalizeText(srv.name);
-  const garment = normalizeText(srv.garment);
-  const group = normalizeText(srv.exclusionGroup);
-  const stdList = Array.isArray(srv.appliesToStandard)
-    ? srv.appliesToStandard.map(normalizeText)
-    : [];
-
-  const isBordado =
-    srv.type === 'Escala de Volumen (Logos)' ||
-    name.includes('bordad') || name.includes('logo') || name.includes('matriz') ||
-    name.includes('estampad') || name.includes('vinil') || name.includes('ponchad') ||
-    group.includes('bordad') || group.includes('logo');
-
-  if (category === 'BORDADOS') {
-    return isBordado;
-  }
-
-  const isGorro =
-    name.includes('gorro') || name.includes('cofia') || name.includes('bandana') ||
-    name.includes('boina') || name.includes('toca') || garment.includes('gorro') || garment.includes('cofia') ||
-    (stdList.length > 0 && stdList.some(g => g.includes('gorro') || g.includes('cofia')));
-
-  if (category === 'GORROS') {
-    return isGorro;
-  }
-
-  const isPantalon =
-    name.includes('pantalon') || name.includes('jogger') || name.includes('pretina') ||
-    garment.includes('pantalon') ||
-    (stdList.length > 0 && stdList.some(g => g.includes('pantalon')));
-
-  if (category === 'PANTALONES') {
-    return isPantalon;
-  }
-
-  const isMandil =
-    name.includes('mandil') || name.includes('delantal') || name.includes('tiro') ||
-    name.includes('argolla') || name.includes('cuero') || name.includes('regulador') ||
-    garment.includes('mandil') || group.includes('tiro') ||
-    (stdList.length > 0 && stdList.some(g => g.includes('mandil')));
-
-  if (category === 'MANDILES') {
-    return isMandil;
-  }
-
-  const isFilipina =
-    name.includes('filipina') || name.includes('manga') || name.includes('cuello') ||
-    name.includes('pechera') || name.includes('broche') || name.includes('vivo') ||
-    garment.includes('filipina') || group.includes('manga') || group.includes('cuello') ||
-    (stdList.length > 0 && stdList.some(g => g.includes('filipina')));
-
-  if (category === 'FILIPINAS') {
-    return isFilipina;
-  }
-
-  if (category === 'OTROS') {
-    const isSpecific = isBordado || isGorro || isPantalon || isMandil || isFilipina;
-    const isExplicitlyOther =
-      srv.isGlobal === true ||
-      srv.garment === 'Global' ||
-      Boolean(srv.appliesToSpecial && Object.keys(srv.appliesToSpecial).length > 0) ||
-      srv.type === 'Variante Base';
-    return !isSpecific || isExplicitlyOther;
-  }
-
-  return true;
-};
 
 export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
   settingsForm,
@@ -125,10 +43,26 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
   const [activeCategory, setActiveCategory] = useState<ServiceCategoryKey>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [confirmDeleteIdx, setConfirmDeleteIdx] = useState<number | null>(null);
+  const [isExclusionGroupsModalOpen, setIsExclusionGroupsModalOpen] = useState(false);
 
   const standardGarments = Object.keys(settingsForm.garments || {});
   const specialPresets = (settingsForm.specialPresets || { "UDI Especial": settingsForm.udiPricing || {} }) as Record<string, Record<string, unknown>>;
   const allServices: ServiceItemData[] = settingsForm.services || [];
+  const customExclusionGroups = (settingsForm.exclusionGroups || []) as string[];
+
+  const availableExclusionGroups = useMemo(() => {
+    const baseGroups = (customExclusionGroups && customExclusionGroups.length > 0)
+      ? customExclusionGroups
+      : DEFAULT_EXCLUSION_GROUPS;
+    const groups = new Set<string>(baseGroups.map(g => g.trim().toUpperCase()).filter(Boolean));
+    allServices.forEach(s => {
+      if (s.exclusionGroup && typeof s.exclusionGroup === 'string') {
+        const trimmed = s.exclusionGroup.trim().toUpperCase();
+        if (trimmed) groups.add(trimmed);
+      }
+    });
+    return Array.from(groups).sort();
+  }, [allServices, customExclusionGroups]);
 
   const updateServiceField = (originalIndex: number, field: string, value: unknown) => {
     const updated = [...allServices];
@@ -139,6 +73,17 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
     setSettingsForm((prev: unknown) => {
       const prevObj = (typeof prev === 'object' && prev !== null ? prev : {}) as Record<string, unknown>;
       return { ...prevObj, services: updated };
+    });
+  };
+
+  const handleUpdateServicesAndGroups = (updatedServices: ServiceItemData[], updatedGroups: string[]) => {
+    setSettingsForm((prev: unknown) => {
+      const prevObj = (typeof prev === 'object' && prev !== null ? prev : {}) as Record<string, unknown>;
+      return {
+        ...prevObj,
+        services: updatedServices,
+        exclusionGroups: updatedGroups
+      };
     });
   };
 
@@ -188,7 +133,9 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
           return false;
         }
 
-        if (!term) return true;
+        if (!term) {
+          return true;
+        }
 
         const nameNorm = normalizeText(srv.name);
         const groupNorm = normalizeText(srv.exclusionGroup);
@@ -210,9 +157,9 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
 
   return (
     <div className="animate-in fade-in space-y-5">
-      {/* Unified Search & Category Filter Toolbar */}
+      {/* Unified Search, Group Manager & Category Filter Toolbar */}
       <div className="bg-stone-900/60 p-3 sm:p-4 rounded-2xl border border-stone-800/90 shadow-sm space-y-3">
-        {/* Row 1: Search Input (bounded width) & + Nuevo Servicio Button */}
+        {/* Row 1: Search Input & Action Buttons */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="relative w-full sm:w-80 md:w-96 max-w-sm">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500 pointer-events-none" />
@@ -235,13 +182,24 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={handleAddService}
-            className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shrink-0 cursor-pointer self-end sm:self-auto"
-          >
-            <Plus size={15} /> Nuevo Servicio
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <button
+              type="button"
+              id="btn-manage-exclusion-groups"
+              onClick={() => setIsExclusionGroupsModalOpen(true)}
+              className="bg-stone-900 hover:bg-stone-800 text-stone-300 hover:text-amber-400 border border-stone-800 hover:border-amber-500/40 text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <Sliders size={14} className="text-amber-400" />
+              <span>Gestionar Grupos</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleAddService}
+              className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+            >
+              <Plus size={15} /> Nuevo Servicio
+            </button>
+          </div>
         </div>
 
         {/* Row 2: Category Filter Pills */}
@@ -268,73 +226,49 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
         </div>
       </div>
 
-      {/* Filter / Search Status summary */}
-      {(searchTerm || activeCategory !== 'ALL') && (
-        <div className="flex items-center justify-between px-2 text-xs font-bold text-stone-400">
-          <span>
-            Mostrando <strong className="text-amber-400">{filteredServices.length}</strong> de {allServices.length} servicios
-            {searchTerm && <span> para &ldquo;<span className="text-stone-200">{searchTerm}</span>&rdquo;</span>}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setSearchTerm('');
-              setActiveCategory('ALL');
-            }}
-            className="text-amber-500 hover:underline text-[11px] font-black uppercase tracking-wider cursor-pointer"
-          >
-            Restablecer Filtros
-          </button>
-        </div>
-      )}
-
-      {/* Services in Compact 2-Column Responsive Grid */}
+      {/* Services Grid with 3-Tier Zero-Truncation Card Layout */}
       {filteredServices.length === 0 ? (
-        <div className="p-12 text-center text-stone-500 text-xs italic bg-stone-950/60 rounded-3xl border border-stone-850 flex flex-col items-center justify-center gap-2">
-          <Search size={24} className="text-stone-600 mb-1" />
-          <p className="font-bold text-stone-400">No se encontraron servicios adicionales.</p>
-          <p className="text-stone-600">Intenta con otro término de búsqueda o cambia la categoría seleccionada.</p>
+        <div className="p-12 text-center bg-stone-900/40 rounded-2xl border border-stone-800/60 flex flex-col items-center justify-center gap-3">
+          <p className="text-stone-400 text-sm">No se encontraron servicios coincidentes con los filtros.</p>
+          {(searchTerm || activeCategory !== 'ALL') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setActiveCategory('ALL');
+              }}
+              className="text-amber-400 text-xs font-bold hover:underline cursor-pointer"
+            >
+              Restablecer filtros de búsqueda
+            </button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredServices.map(({ srv, originalIndex }) => {
             const summary = getApplicabilitySummary(srv, standardGarments, specialPresets);
             const isGlobal = srv.isGlobal === true || srv.garment === 'Global';
 
             return (
               <div
-                key={`${srv.name || 'srv'}-${originalIndex}`}
+                key={`service-card-${originalIndex}`}
                 id={`service-card-${originalIndex}`}
                 className="bg-stone-900/80 border border-stone-800 hover:border-stone-700/90 rounded-2xl p-3 shadow-sm flex flex-col justify-between gap-2.5 transition-all group relative"
               >
-                {/* Compact Header: Service Number Badge, Name, Exclusion Group chip, and Delete Action */}
+                {/* Row 1 (Header - Full Width): #ID badge + Service Name Input + Delete Action */}
                 <div className="flex items-center gap-2">
                   <span className="shrink-0 w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono font-black text-[11px] flex items-center justify-center">
                     #{originalIndex + 1}
                   </span>
 
-                  <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={srv.name || ''}
-                      onChange={e => updateServiceField(originalIndex, 'name', e.target.value)}
-                      className="bg-stone-950/90 border border-stone-800/80 focus:border-amber-500/80 px-2.5 py-1.5 rounded-xl font-bold text-stone-100 outline-none text-xs flex-1 transition placeholder:text-stone-600 truncate"
-                      placeholder="Nombre del servicio..."
-                    />
-                    <div className="relative shrink-0 w-24 sm:w-28" title="Grupo Excluyente (ej. TIPO, MANGA, CUELLO)">
-                      <input
-                        type="text"
-                        value={srv.exclusionGroup || ''}
-                        onChange={e => updateServiceField(originalIndex, 'exclusionGroup', e.target.value.toUpperCase())}
-                        className={`bg-stone-950/90 border px-2 py-1.5 rounded-xl text-[10px] font-black uppercase outline-none w-full transition placeholder:text-stone-600 placeholder:normal-case truncate ${
-                          srv.exclusionGroup
-                            ? 'border-amber-500/50 text-amber-400 bg-amber-500/10'
-                            : 'border-stone-800/80 text-stone-400 hover:border-stone-700'
-                        }`}
-                        placeholder="Grupo (ej. TIPO)"
-                      />
-                    </div>
-                  </div>
+                  <input
+                    type="text"
+                    value={srv.name || ''}
+                    title={srv.name || ''}
+                    onChange={e => updateServiceField(originalIndex, 'name', e.target.value)}
+                    className="bg-stone-950/90 border border-stone-800/80 focus:border-amber-500/80 px-2.5 py-1.5 rounded-xl font-bold text-stone-100 outline-none text-xs flex-1 transition placeholder:text-stone-600 min-w-0"
+                    placeholder="Nombre del servicio..."
+                  />
 
                   {confirmDeleteIdx === originalIndex ? (
                     <div className="flex items-center gap-1 bg-red-950/90 border border-red-800/80 px-2 py-0.5 rounded-xl animate-in fade-in shrink-0">
@@ -366,7 +300,7 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
                   )}
                 </div>
 
-                {/* Horizontal Row: Compatible Garments tag, Service Type badge/selector, and Price input (Bs) */}
+                {/* Row 2: Compatible Garments tag, Service Type badge/selector, and Price input (Bs) */}
                 <div className="flex items-center gap-2 pt-1 border-t border-stone-800/60">
                   {/* Compatible Garments tag */}
                   <button
@@ -428,6 +362,37 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
                     </span>
                   </div>
                 </div>
+
+                {/* Row 3: Standalone Exclusion Group selector row */}
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-800/40 text-[10px]">
+                  <span className="font-bold text-stone-500 uppercase tracking-wider shrink-0">
+                    Grupo Excluyente:
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-1 max-w-xs justify-end">
+                    <select
+                      value={srv.exclusionGroup ? srv.exclusionGroup.trim().toUpperCase() : ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === '__MANAGE__') {
+                          setIsExclusionGroupsModalOpen(true);
+                        } else {
+                          updateServiceField(originalIndex, 'exclusionGroup', val ? val.trim().toUpperCase() : '');
+                        }
+                      }}
+                      className={`bg-stone-950/90 border px-2.5 py-1 rounded-xl text-[10px] font-black uppercase outline-none transition cursor-pointer max-w-[200px] truncate ${
+                        srv.exclusionGroup
+                          ? 'border-amber-500/50 text-amber-400 bg-amber-500/10'
+                          : 'border-stone-800/80 text-stone-400 hover:border-stone-700'
+                      }`}
+                    >
+                      <option value="">Sin exclusión</option>
+                      {availableExclusionGroups.map(grp => (
+                        <option key={grp} value={grp}>{grp}</option>
+                      ))}
+                      <option value="__MANAGE__">⚙️ Gestionar grupos...</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -444,7 +409,7 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
         </div>
         <button
           type="submit"
-          id="btn-save-services-sticky"
+          form="settings-form"
           className="bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs uppercase tracking-wider px-4 py-2 rounded-xl transition flex items-center gap-2 shadow-md shadow-amber-500/20 cursor-pointer"
         >
           <CheckCircle2 size={15} /> Guardar Servicios
@@ -461,7 +426,15 @@ export const ServicesCatalogTab: React.FC<ServicesCatalogTabProps> = ({
           onClose={() => setSelectedServiceIndex(null)}
         />
       )}
+
+      {/* Dedicated Exclusion Groups Manager Modal */}
+      <ExclusionGroupsModal
+        isOpen={isExclusionGroupsModalOpen}
+        onClose={() => setIsExclusionGroupsModalOpen(false)}
+        services={allServices}
+        onUpdateServices={handleUpdateServicesAndGroups}
+        customExclusionGroups={customExclusionGroups}
+      />
     </div>
   );
 };
-

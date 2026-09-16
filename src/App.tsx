@@ -39,11 +39,33 @@ import { CancelActiveOrderModal } from './components/modals/CancelActiveOrderMod
 import { CancelQuoteModal } from './components/modals/CancelQuoteModal';
 
 export const App: React.FC = () => {
-  const { user, userProfile, isLoading: authLoading, login } = useAuth();
+  const { user, userProfile, isLoading: authLoading, login, activeViewRole } = useAuth();
   const { clientAccounts, masterContacts, orders, sizeTables: garmentSizeTablesFromDb, usersList: allUsers, pricing, isLoading: dataLoading } = useData();
 
   const [activeTab, setActiveTab] = useState('ventas');
   const [settingsTab, setSettingsTab] = useState<'A' | 'B' | 'C' | 'D' | 'seguridad'>('A');
+
+  // Role-based landing tab router (runs strictly once upon initial authenticated load)
+  const hasSetInitialLandingTab = useRef(false);
+  useEffect(() => {
+    if (authLoading || !user || !userProfile || hasSetInitialLandingTab.current) return;
+
+    const role = userProfile.role ? userProfile.role.toUpperCase() : '';
+    if (role === 'VENTAS') {
+      setActiveTab('ventas');
+    } else if (role === 'OPERACIONES') {
+      setActiveTab('operaciones');
+    } else if (role === 'PRODUCCION') {
+      setActiveTab('produccion');
+    } else if (role === 'ADMIN' || role === 'SUPERADMIN') {
+      if (activeViewRole && activeViewRole !== 'admin') {
+        setActiveTab(activeViewRole);
+      } else {
+        setActiveTab('ventas');
+      }
+    }
+    hasSetInitialLandingTab.current = true;
+  }, [authLoading, user, userProfile, activeViewRole]);
   const [openNavDropdown, setOpenNavDropdown] = useState<string | null>(null);
   const [ventasTab, setVentasTab] = useState<string>('activas');
   const [ventasHistorialTimeframe, setVentasHistorialTimeframe] = useState<'month' | 'lastMonth' | 'all'>('month');
