@@ -384,3 +384,12 @@ All notable changes and architectural updates to Azafrán Chefwear are documente
   - Configured drawer wrapper padding to `p-2.5 sm:p-3` for responsive spacing.
   - Wrapped Filipina and Pantalón measurement blocks in a side-by-side grid (`grid grid-cols-1 sm:grid-cols-2 gap-3 w-full`).
   - Maintained zero TypeScript errors and confirmed compliance with Rule 300/500 (399 lines).
+- **UI Architecture Update**: Applied mobile portrait responsive breakpoint refinements in `ProductionView.tsx`.
+  - Refactored Secondary Utility Row (Row B) with `flex-col sm:flex-row landscape:flex-row items-start sm:items-center landscape:items-center justify-between`:
+    - Garment title now takes full width in portrait with `whitespace-normal leading-tight`, completely eliminating 'U..' truncation while staying inline in landscape.
+    - Action controls align to the right across the full row on mobile portrait and remain inline in landscape.
+  - Measurement Tiles:
+    - Updated Filipina and Pantalón grid to `grid-cols-2 sm:grid-cols-4 landscape:grid-cols-4 gap-1.5 w-full`.
+    - Refactored micro-tile labels to `text-[9px] font-bold text-stone-400 uppercase whitespace-normal leading-tight block`, wrapping multi-word labels cleanly across two lines without ellipses.
+  - Preserved 100% of single-screen mobile landscape view and desktop ledger layout untouched.
+  - Maintained strict Rule 500 compliance (419 lines) with 0 TypeScript diagnostics (`tsc --noEmit`).

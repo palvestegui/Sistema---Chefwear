@@ -66,10 +66,10 @@ const MobileMeasurementGrid = ({ label, specs, isPan, colsOverride }: { label: s
   return (
     <div>
       <span className="text-[10px] font-black text-amber-500 mb-1.5 block">{label}</span>
-      <div className={`grid ${colsOverride || 'grid-cols-2'} gap-1.5 w-full`}>
+      <div className={`grid ${colsOverride || 'grid-cols-2 sm:grid-cols-4 landscape:grid-cols-4'} gap-1.5 w-full`}>
         {points.map((p, i) => (
           <div key={i} className="bg-stone-900/90 border border-stone-800/80 rounded-md p-1.5 flex flex-col items-center justify-center text-center w-full">
-            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block truncate w-full">{p.k}</span>
+            <span className="text-[9px] font-bold text-stone-400 uppercase whitespace-normal leading-tight block">{p.k}</span>
             <span className="text-xs font-mono font-black text-amber-400 whitespace-nowrap mt-0.5">{p.v || '—'} cm</span>
           </div>
         ))}
@@ -274,30 +274,50 @@ export const ProductionView: React.FC<ProductionViewProps> = (props) => {
                     </div>
 
                     {/* Row B (Garment Summary & Buttons) */}
-                    <div className="flex items-center justify-between gap-2 w-full py-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-bold text-xs text-stone-200 uppercase truncate">{item.name}</span>
-                        <span className="text-[10px] text-amber-500 bg-stone-950 px-1.5 py-0.5 rounded border border-stone-800 font-sans">x{item.qty || 1}</span>
+                    <div className="flex flex-col sm:flex-row landscape:flex-row items-start sm:items-center landscape:items-center justify-between gap-2 w-full py-0.5">
+                      {/* Garment Title - Takes full row in portrait, inline in landscape */}
+                      <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto landscape:w-auto">
+                        <span className="font-bold text-xs sm:text-sm text-stone-200 uppercase whitespace-normal leading-tight">
+                          {item.name}
+                        </span>
+                        <span className="text-[10px] font-mono text-amber-500 bg-stone-950 px-1.5 py-0.5 rounded border border-stone-800 shrink-0">
+                          x{item.qty || 1} {item.fabric ? `• ${item.fabric}` : ''}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button onClick={() => setViewingInvoiceId(order.id)} className="bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 h-7 px-2 rounded-lg font-black uppercase text-[10px] tracking-wider transition shrink-0 flex items-center justify-center">📄 ORDEN</button>
-                        
+
+                      {/* Action Controls - Full-width right-aligned in portrait, inline in landscape */}
+                      <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto landscape:w-auto justify-end">
+                        <button
+                          onClick={() => setViewingInvoiceId(order.id)}
+                          className="h-7 px-2 text-[10px] bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 rounded-lg font-black uppercase tracking-wider flex items-center gap-1 transition"
+                        >
+                          <FileText size={12} /> Orden
+                        </button>
                         {order.status === 'Material Listo' ? (
                           !isWriteDisabled('produccion') && (
-                            <button onClick={() => updateStatus(order.id, 'En Producción')} className="bg-purple-600 text-white h-7 px-2.5 rounded-lg font-black uppercase text-[10px] tracking-wider hover:bg-purple-500 transition shadow-lg flex items-center justify-center gap-1 shrink-0">▶ INICIAR</button>
+                            <button
+                              onClick={() => updateStatus(order.id, 'En Producción')}
+                              className="h-7 px-2.5 text-[10px] bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-black uppercase tracking-wider flex items-center gap-1 transition shadow-sm"
+                            >
+                              ▶ Iniciar
+                            </button>
                           )
                         ) : (
                           !isWriteDisabled('produccion') && (
-                            <button onClick={() => updateStatus(order.id, 'Producido')} className="bg-indigo-600 text-white h-7 px-2.5 rounded-lg font-black uppercase text-[10px] tracking-wider hover:bg-indigo-500 transition shadow-lg flex items-center justify-center gap-1 shrink-0"><CheckCircle size={12}/> TERMINAR</button>
+                            <button
+                              onClick={() => updateStatus(order.id, 'Producido')}
+                              className="h-7 px-2.5 text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-black uppercase tracking-wider flex items-center gap-1 transition shadow-sm"
+                            >
+                              <CheckCircle size={12} /> Terminar
+                            </button>
                           )
                         )}
-                        
                         {isCustom && (
-                          <button 
+                          <button
                             onClick={() => toggleMeasurements(k)}
-                            className="h-7 px-2.5 text-[10px] font-bold text-amber-400 bg-amber-950/40 border border-amber-500/40 rounded-lg flex items-center gap-1 uppercase transition hover:bg-amber-950/50 shrink-0"
+                            className="h-7 px-2.5 text-[10px] text-amber-400 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 rounded-lg font-black uppercase tracking-wider flex items-center gap-1 transition"
                           >
-                            <Ruler size={10}/> MEDIDAS {expandedMeasurements[k] ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+                            📏 Medidas {expandedMeasurements[k] ? '▴' : '▾'}
                           </button>
                         )}
                       </div>
@@ -323,21 +343,21 @@ export const ProductionView: React.FC<ProductionViewProps> = (props) => {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                             {showFil && (
                               <div className="w-full">
-                                <MobileMeasurementGrid label="👘 FILIPINA" specs={filMeasurements} isPan={false} colsOverride="grid-cols-4" />
+                                <MobileMeasurementGrid label="👘 FILIPINA" specs={filMeasurements} isPan={false} colsOverride="grid-cols-2 sm:grid-cols-4 landscape:grid-cols-4" />
                               </div>
                             )}
                             {showPan && (
                               <div className="w-full">
-                                <MobileMeasurementGrid label="👖 PANTALÓN" specs={panMeasurements} isPan={true} colsOverride="grid-cols-2" />
+                                <MobileMeasurementGrid label="👖 PANTALÓN" specs={panMeasurements} isPan={true} colsOverride="grid-cols-2 sm:grid-cols-4 landscape:grid-cols-4" />
                               </div>
                             )}
                             {(!showFil && !showPan && hasDirectSpecs) && (
                               <div className="w-full col-span-full">
                                 <span className="text-[10px] font-black text-amber-500 mb-1.5 block">MEDIDAS</span>
-                                <div className="grid grid-cols-4 gap-1.5 w-full">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 landscape:grid-cols-4 gap-1.5 w-full">
                                   {Object.entries(item.measurements).filter(([_, v]) => v && String(v).trim() !== '' && String(v).trim() !== '0').map(([mk, mv]) => (
                                     <div key={mk} className="bg-stone-900/90 border border-stone-800/80 rounded-md p-1.5 flex flex-col items-center justify-center text-center w-full">
-                                      <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block truncate w-full">{mk}</span>
+                                      <span className="text-[9px] font-bold text-stone-400 uppercase whitespace-normal leading-tight block">{mk}</span>
                                       <span className="text-xs font-mono font-black text-amber-400 whitespace-nowrap mt-0.5">{String(mv)} cm</span>
                                     </div>
                                   ))}
