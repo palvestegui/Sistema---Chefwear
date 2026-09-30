@@ -1,5 +1,27 @@
 ## [Unreleased]
-### UDI Order Financial Reconciliation Patch (`udiReconciliationPatch.ts`, `udiFabricMigration.ts`)
+### InvoiceModal Pricing Resolver & Financial Ledger Standardization (`pricingResolver.ts`, `InvoiceModal.tsx`)
+- **Canonical Pricing Resolver (`src/utils/pricingResolver.ts`)**: Built canonical, zero-hardcoded `resolveItemPrice(item, pricingTier, pricing, accountId)` utility that dynamically evaluates line-item unit prices from the central pricing context:
+  - Custom overrides: respects explicit `customUnitPrice` if present.
+  - Uniforme Completo UDI: dynamically sums active UDI bundle components via `getUdiBundleBreakdown`.
+  - Special Presets & UDI Tier: resolves against `pricing.specialPresets` or `pricing.udiPricing` (including fabric-specific matrix lookups and UDI tier aliases).
+  - Tab A Catalog: maps standard retail (`Minorista (PVP)` / `Estándar Raleo`) and wholesale (`Estándar B2B`) rates via `getGarmentPriceValue`, with fallback to default garment fabrics and base price arrays.
+- **Accurate Financial Ledger Formatting (`InvoiceModal.tsx`, `InvoiceFinancialLedger.tsx`)**:
+  - `SUBTOTAL` bound strictly to `order.subtotal ?? order.totalPrice`.
+  - Displays explicit discount line items before `TOTAL GENERAL` if volume/cash/manual discounts are present.
+  - `TOTAL GENERAL` bound strictly to `Number(order.totalPrice)`.
+- **Defensive Payment and Balance Resolution**:
+  - Evaluates `totalPaid` defensively using `order.paymentHistory` summation when available or falls back to `order.amountCollected`.
+  - Calculates `balance = Math.max(0, totalPrice - totalPaid)` and `credit = totalPaid > totalPrice ? totalPaid - totalPrice : 0`.
+  - Renders `MONTO PAGADO` bound to `totalPaid`.
+  - Displays `SALDO A FAVOR: Bs{credit.toFixed(2)}` when credit > 0, or `SALDO PENDIENTE: Bs{balance.toFixed(2)}`.
+- **Strict Rule 300 / 500 Compliance**: Modularized `InvoiceModal.tsx` from 460 lines down to 263 lines (<300 lines) by extracting subcomponents:
+  - `InvoiceCustomerInfo.tsx` (60 lines)
+  - `InvoiceTabBar.tsx` (58 lines)
+  - `InvoiceFinancialLedger.tsx` (121 lines)
+  - `InvoicePaymentHistory.tsx` (110 lines)
+  - `InvoiceActionButtons.tsx` (82 lines)
+  - Zero writes to Firestore, 100% strict type safety with no `any` compromises.
+
 - **Three-Order Reconciliation Engine**: Created dedicated, idempotent database reconciliation patch (`src/utils/udiReconciliationPatch.ts`) targeting the 3 overcollected UDI student orders in the Firestore `orders` collection:
   - **#ORD-00021 (Mariana Santos / `ORD-1788533995246-669`)**: Set `totalPrice: 253` and `amountCollected: 253`. Removed legacy `reconciliationNote` using `deleteField()`. Leaves Saldo at **Bs 0.00**.
   - **#ORD-00022 (Felipe Coronado / `ORD-1788534268408-593`)**: Set `totalPrice: 149` and `amountCollected: 149`. Removed legacy `reconciliationNote` using `deleteField()`. Leaves Saldo at **Bs 0.00**.
