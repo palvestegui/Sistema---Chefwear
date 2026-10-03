@@ -1,4 +1,21 @@
 ## [Unreleased]
+### Garment-Aware Measurement Cascading & Dynamic Production Cards (`EditContactModal.tsx`, `ProductionView.tsx`)
+- **Canonical Garment Classifiers**: Defined canonical classification helpers matching Azafrán catalog taxonomy without ambiguity:
+  - `isUpperTailored`: `/filipina|chamarra|camisa/i` (upper tailored chefwear and outerwear).
+  - `isLowerTailored`: `/pantalon|pantalón/i` (tailored trousers).
+  - `isTailored`: `isUpperTailored || isLowerTailored`.
+- **Targeted Measurement Cascade (`EditContactModal.tsx`)**:
+  - Restricts measurement cascading strictly to tailored pieces (`isUpperTailored` and `isLowerTailored`).
+  - Automatically purges residual `measurements` and `customMeasurements` from unitalla items (Mandil, Gorro, Delantal, Guardapolvo, Accesorios).
+- **Dynamic Workshop Card Badges (`ProductionView.tsx`)**:
+  - Upper garments (Filipina, Chamarra, Camisa) dynamically badge as `[📐 8 MEDIDAS ^]` expanding to the 8 upper points.
+  - Lower garments (Pantalón) dynamically badge as `[📐 4 MEDIDAS ^]` expanding to the 4 pant points (Cintura, Cadera, Ancho Pierna, Largo Pierna).
+  - Standard unitalla items (Mandil, Gorro, Delantal) suppress all measurement buttons and drawers, displaying clean standard sizing (`Talla: M`) or subtle dashes (`—`) without raw measurement dumps.
+- **Immediate Database Sanitization**:
+  - Sanitized `ORD-00014` (Claudia Subirana), stripping accidental measurements from Mandil UDI and verifying clean card layout.
+  - Scanned and sanitized all remaining active production orders in Firestore.
+- **Rule 300 / Rule 500 Compliance**: `EditContactModal.tsx` at 403 lines (< 500 visual limit) and `ProductionView.tsx` at 463 lines (< 500 visual limit); 0 `any` additions and clean compilation verified via `tsc --noEmit`.
+
 ### Two-Way Measurement Synchronization & Active Order Cascading (`EditContactModal.tsx`, `contactUtils.ts`)
 - **Canonical TAILORING_12_POINTS Resolution**: Replaced hardcoded local points list in `EditContactModal.tsx` with canonical `TAILORING_12_POINTS` from `src/utils/contactUtils.ts`.
 - **Multi-Alias Key Resolution**: Implemented defensive key matching inspecting prefixed (`m.key`), alternative (`m.alt`), stripped (`m.key.replace(/^[FP]_/, '')`), and camelCase (`camel`) variants:

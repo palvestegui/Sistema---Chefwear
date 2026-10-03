@@ -3,6 +3,10 @@ import { UserCog, X, Save } from 'lucide-react';
 import { doc, updateDoc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { TAILORING_12_POINTS, normalizeName } from '../../utils/contactUtils';
 
+export const isUpperTailored = (name: string): boolean => /filipina|chamarra|camisa/i.test(name || '');
+export const isLowerTailored = (name: string): boolean => /pantalon|pantalón/i.test(name || '');
+export const isTailored = (name: string): boolean => isUpperTailored(name) || isLowerTailored(name);
+
 export const EditContactModal = ({
   onClose,
   editingMasterContact,
@@ -121,11 +125,24 @@ export const EditContactModal = ({
                     const existingSizing = (orderData.sizingMatrix || orderData.sizingMatrix12PtCM || orderData.measurements || {}) as Record<string, unknown>;
                     const updatedOrderSizing = { ...existingSizing, ...contactData.sizingMatrix };
 
-                    const updatedItems = ((orderData.items || []) as Record<string, unknown>[]).map((item) => ({
-                      ...item,
-                      customMeasurements: { ...((item.customMeasurements as Record<string, unknown>) || {}), ...contactData.sizingMatrix },
-                      measurements: { ...((item.measurements as Record<string, unknown>) || {}), ...contactData.sizingMatrix }
-                    }));
+                    const updatedItems = ((orderData.items || []) as Record<string, unknown>[]).map((item) => {
+                      const itemName = String(item.name || '');
+
+                      if (isUpperTailored(itemName) || isLowerTailored(itemName)) {
+                        return {
+                          ...item,
+                          customMeasurements: { ...((item.customMeasurements as Record<string, unknown>) || {}), ...contactData.sizingMatrix },
+                          measurements: { ...((item.measurements as Record<string, unknown>) || {}), ...contactData.sizingMatrix }
+                        };
+                      }
+
+                      // Unitalla garments (Mandil, Gorro, Delantal, Guardapolvo, Accesorios):
+                      // Explicitly remove accidental measurements
+                      const cleanItem = { ...item };
+                      delete cleanItem.customMeasurements;
+                      delete cleanItem.measurements;
+                      return cleanItem;
+                    });
 
                     orderBatchUpdates.push(
                       updateDoc(doc(db, 'orders', orderDoc.id), {
