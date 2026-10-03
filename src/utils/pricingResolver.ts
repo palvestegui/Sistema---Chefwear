@@ -84,9 +84,21 @@ export function resolveItemPrice(
     const presetData = specialPresets[matchedPresetKey] || (matchedPresetKey === 'UDI Especial' ? pricing.udiPricing : null);
     if (presetData && typeof presetData === 'object') {
       let presetPrice = 0;
-      const garmentKey = Object.keys(presetData).find(
-        (k) => k.toLowerCase() === (item.name || '').trim().toLowerCase()
-      ) || item.name;
+      const cleanItemName = (item.name || '').trim().toLowerCase();
+      const normItemName = cleanItemName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+      let garmentKey = Object.keys(presetData).find(
+        (k) => k.toLowerCase() === cleanItemName
+      );
+
+      if (!garmentKey) {
+        garmentKey = Object.keys(presetData).find((k) => {
+          const normK = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return normK.includes(normItemName) || normItemName.includes(normK);
+        });
+      }
+
+      if (!garmentKey) garmentKey = item.name;
 
       if (garmentKey && presetData[garmentKey] !== undefined) {
         const gData = presetData[garmentKey];

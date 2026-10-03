@@ -1,4 +1,68 @@
 ## [Unreleased]
+### Two-Way Measurement Synchronization & Active Order Cascading (`EditContactModal.tsx`, `contactUtils.ts`)
+- **Canonical TAILORING_12_POINTS Resolution**: Replaced hardcoded local points list in `EditContactModal.tsx` with canonical `TAILORING_12_POINTS` from `src/utils/contactUtils.ts`.
+- **Multi-Alias Key Resolution**: Implemented defensive key matching inspecting prefixed (`m.key`), alternative (`m.alt`), stripped (`m.key.replace(/^[FP]_/, '')`), and camelCase (`camel`) variants:
+  `matrix[m.key] ?? (m.alt ? matrix[m.alt] : undefined) ?? matrix[camel] ?? matrix[stripped] ?? matrix[stripped.toLowerCase()] ?? ''`.
+  Guarantees all 12 tailoring points load seamlessly for contacts like Claudia Subirana where historical order measurements are stored in camelCase.
+- **Bidirectional Key Synchronization**: Updated `onChange` and waist-pairing logic to mirror values across both `m.key` and `m.alt` in `updatedMatrix` (e.g., `P_Largo_Pierna` and `largoPierna`).
+- **Automatic Active Order Cascade**: On `handleSave`, queries all active production orders across `activeStatuses` (`'Inventario Pendiente'`, `'Material Listo'`, `'En Confección'`, `'En Producción'`, `'Medidas Pendientes'`, `'Orden Activa'`). Matches orders by `contactId` or normalized customer name and writes updated sizing into `order.sizingMatrix`, `order.sizingMatrix12PtCM`, and all `order.items[].measurements` / `customMeasurements`.
+- **Verified Production Card Reflection**: Confirmed that saving updates both `masterContacts` and Claudia Subirana's active order (`ORD-00014`), reflecting *Largo Pierna: 90 cm* immediately on the production card.
+- **Rule 300 / Rule 500 Compliance & Strict Types**: `EditContactModal.tsx` kept at 386 lines (< 500 visual limit) and `contactUtils.ts` at 159 lines (< 300 logical limit), with 0 build errors in `tsc --noEmit`.
+
+### Aggregated MCP Tool `azafran_get_bundle` & Server Rule 300 Optimization (`server.ts`)
+- **Aggregated MCP Tool Registration**: Implemented and registered `azafran_get_bundle` in `MCP_TOOLS` and JSON-RPC dispatch in `server.ts`. Enables single-approval status inspections of pricing catalog (`pricing/global`), active workshop orders (`orders`), and sales pipeline quotes (`quotes`).
+- **Concurrent Handler Execution**: Concurrently fetches datasets via `Promise.all([getDoc(...), getDocs(orders), getDocs(quotes)])`.
+  - Filters active orders by excluding canceled (`Cancelado`, `Anulado`) and quote documents (`COTIZACION`, `COT-*`).
+  - Resolves quotes from the dedicated collection or quotes fallback in `orders`.
+  - Returns unified payload `{ pricing, orders, quotes, summary: { activeOrdersCount, quotesCount, lastSyncedAt } }`.
+- **Granular MCP Tools Preservation**: Retained all existing granular inspection and action tools (`azafran_get_summary`, `azafran_get_bottlenecks`, `azafran_get_reports`, `azafran_get_sellers`, `azafran_get_orders`, `azafran_get_quotes`, `azafran_get_directory`, `azafran_create_quote`, `azafran_revert_order`, `azafran_delete_quote`, `azafran_merge_contacts`).
+- **Strict Rule 300 Line Limit Adherence**: Refactored `server.ts` down to 268 lines (well below the 300-line ceiling) using typed tool dispatch mapping and concise schema declarations.
+- **Strict Type Safety**: Defined explicit `OrderDocData`, `BundleSummary`, and `AzafranBundlePayload` interfaces; eliminated TS index-signature property errors and removed all `any` and `@ts-ignore` instances. Validated via `tsc --noEmit`.
+
+### Contract Invariance Principle Enforcement & Zero-Drift Verification (`ActiveOrdersList.tsx`, `pricingResolver.ts`, `fixOrderSalazarTypo.ts`)
+- **ActiveOrdersList Recalculation Elimination**: Removed dangerous live `getOrderBreakdown(...)` fallback in `ActiveOrdersList.tsx`. Re-bound financial totals strictly and immutably to stored values (`order.totalPrice` and `order.amountCollected`), guaranteeing zero UI recalculation drift on historical orders.
+- **Double-Hash Header Sanitization**: Corrected order card header to `{order.id.startsWith('#') ? order.id : `#${order.id}`}`, preventing `##ORD-xxxxx` display glitch.
+- **Hugo Salazar Typo Repair (`scripts/fixOrderSalazarTypo.ts`)**: Executed one-time document update for `#ORD-00001` (Hugo A. Salazar M.), replacing typo `"Chamarra Ecuestre Personalizadoa"` with canonical `"Chamarra Ecuestre personalizada"`. Confirmed `totalPrice: 1400`, `amountCollected: 700`, `balance: 700`.
+- **Robust Preset Matching (`pricingResolver.ts`, `usePricingEngine.ts`)**: Enhanced preset garment key lookup with normalized substring matching (`normK.includes(normItemName)`), allowing short names (`"Filipina"`, `"Pantalón"`) to resolve directly against post-cutover preset descriptors (`"Filipina con logo UDI en el pecho y banderas en el cuello"`, etc.) without falling back to standard retail.
+- **Zero-Drift Invariance Verification**: Re-ran `scripts/auditCutoverDiscrepancies.ts` confirming:
+  - 20 historical settled orders safely skipped.
+  - 11 active/post-cutover orders evaluated.
+  - Exactly **ZERO (0)** orders flagged with dynamic drift across the database.
+  - Hugo Salazar (`#ORD-00001`): Stored Bs 1,400.00 / Saldo Bs 700.00 (0 drift).
+  - Liliana Montero (`#ORD-00025`): Stored Bs 253.00 / Saldo Bs 53.00 (0 drift).
+  - Luciane Durán (`#ORD-00024`): Stored Bs 253.00 / Saldo Bs 53.00 (0 drift).
+
+### Cutover Dynamic Pricing Drift & Balance Distortion Audit (`scripts/auditCutoverDiscrepancies.ts`)
+- **Benchmark Cutover**: Evaluated September 16, 2026 20:36:31 UTC-4 (`1789590991988`) cutover when `pricing/global` upgraded from short garment keys to full descriptors.
+- **Historical Settlement Isolation**: Verified and safely isolated 20 pre-cutover settled orders where `storedTotal - collected <= 0.01`, skipping false-positive error flags.
+- **Active Balance Drift Engine**: Evaluated 11 active/post-cutover orders against the dynamic pricing engine (`computeDiscountEngine` & `resolveItemPrice`).
+- **Discrepancy Findings**:
+  - `#ORD-00024` (Luciane Durán) & `#ORD-00025` (Liliana Montero): Stored Total Bs 253.00, Dynamic Total Bs 220.00 (-Bs 33.00 drift). Pending balance distorted from stored Bs 53.00 down to dynamic Bs 20.00 (-62.3% balance distortion) due to single-piece UDI Filipinas failing exact preset matching and falling back to standard retail catalog.
+  - `#ORD-00001` (Hugo A. Salazar M.): Stored Total Bs 1,400.00, Dynamic Total Bs 200.00 (-Bs 1,200.00 drift). Stored balance Bs 700.00 distorted to Bs 0.00 due to uncataloged bespoke jackets.
+- **Strict Compliance**: Zero database mutations (read-only), Rule 300 compliance (238 lines), zero `any` type safety.
+
+### Institutional UDI Orders Diagnostic Audit (`scripts/auditUdiOrders.ts`)
+- **Diagnostic Engine**: Built and executed automated read-only diagnostic audit script (`scripts/auditUdiOrders.ts`) against Firestore `orders` and `pricing/global`.
+- **Source of Truth**: Extracted canonical contract definitions dynamically from `pricing.specialPresets['UDI Especial']` and `pricing.udiPricing`:
+  - `"Filipina con logo UDI en el pecho y banderas en el cuello"` -> Drill de 8oz (Bs 253.00)
+  - `"Pantalón con 1 bolsillo cargo y logo UDI en la pierna"` -> Drill de 8oz (Bs 190.00)
+  - `"Mandil con logo UDI en el bolsillo del pecho"` -> Tornado (Bull Denim) (Bs 149.00)
+  - `"Gorro con logo UDI en la frente"` -> Drill de 8oz (Bs 35.00)
+  - Archetype Bundle: `"Uniforme Completo UDI"` (Bs 627.00)
+- **Multi-Vector Inspection**: Scanned all 20 UDI orders across four vectors:
+  - Vector 1 (Naming Truncation): 36 items flagged with generic bare names (`"Filipina"`, `"Pantalón"`, `"Mandil"`, `"Gorro"`).
+  - Vector 2 (Fabric Discrepancy): 2 items flagged with unauthorized fabrics (`"Gabardina de 1ra"` in #ORD-00003, `"Drill de 6oz"` in #ORD-00021).
+  - Vector 3 (Price Discrepancy): 24 items flagged with off-contract unit rates (resulting from unlinked catalog lookups or pro-rata cash discounts).
+  - Vector 4 (Services Discrepancy): 1 item flagged with non-standard service naming (`"Tiros cruzados"` in #ORD-00003 instead of canonical `"Correas cruzadas"`).
+- **Zero Database Mutations**: 100% read-only inspection with zero writes, zero batch updates, zero UI mutations, and strict TypeScript types.
+
+### Garment Sizing Category Normalization & UDI Measurement Inputs (`GarmentSizingSection.tsx`)
+- **Category Normalizer (`resolveGarmentCategory`)**: Added root normalizer helper stripping diacritics and matching descriptive garment item names (e.g. `'Filipina con logo UDI en el pecho y banderas en el cuello'`, `'Pantalón con 1 bolsillo cargo'`) to their base categories (`'Filipina'`, `'Pantalón'`, `'Mandil'`, `'Gorro'`).
+- **Aligned UDI Mode & Requirements Detection**: Updated `isUdiMode` detection to check account ID (`ACC-001`), category (`UDI`), client types (`Estudiante UDI`, `Universidad / Instituto` containing `udi`), and pricing tiers (`UDI Especial`, `Contrato Institucional`). Computed `targetRequiredFields` against normalized base category to guarantee measurement inputs render reliably for individual UDI pieces.
+- **Intelligent Sizing Mode Default**: Defaulted custom sizing (`isCustomSizingActive`) for UDI students while keeping toggles responsive and reactive.
+- **Normalized Input Field Mapping**: Rendered individual garment measurement inputs using `targetRequiredFields` with label lookups against `fieldLabels`.
+- **Rule 300 / 200-Line Budget Compliance**: Refactored input rendering helper to keep `GarmentSizingSection.tsx` at 162 lines (well below the 200-line budget and Rule 300 ceiling).
+
 ### InvoiceModal Pricing Resolver & Financial Ledger Standardization (`pricingResolver.ts`, `InvoiceModal.tsx`)
 - **Canonical Pricing Resolver (`src/utils/pricingResolver.ts`)**: Built canonical, zero-hardcoded `resolveItemPrice(item, pricingTier, pricing, accountId)` utility that dynamically evaluates line-item unit prices from the central pricing context:
   - Custom overrides: respects explicit `customUnitPrice` if present.

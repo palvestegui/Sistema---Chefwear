@@ -1,6 +1,7 @@
 import React from 'react';
 import { UserCog, X, Save } from 'lucide-react';
-import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { TAILORING_12_POINTS, normalizeName } from '../../utils/contactUtils';
 
 export const EditContactModal = ({
   onClose,
@@ -102,6 +103,43 @@ export const EditContactModal = ({
                         createdAt: Date.now()
                     });
                     await setDoc(counterRef, { currentSequence: currentSeq }, { merge: true });
+                }
+
+                // Cascade updated measurements to all active production orders for this customer
+                const activeStatuses = ['Inventario Pendiente', 'Material Listo', 'En Confección', 'En Producción', 'Medidas Pendientes', 'Orden Activa'];
+                const ordersRef = collection(db, 'orders');
+                const activeOrdersQuery = query(ordersRef, where('status', 'in', activeStatuses));
+                const activeOrdersSnap = await getDocs(activeOrdersQuery);
+
+                const orderBatchUpdates: Promise<void>[] = [];
+                activeOrdersSnap.forEach((orderDoc) => {
+                  const orderData = orderDoc.data();
+                  const isMatch = (orderData.contactId && orderData.contactId === editingMasterContact.contactId) ||
+                                  (normalizeName(orderData.customer || orderData.client || '') === normalizeName(editingMasterContact.fullName || ''));
+
+                  if (isMatch) {
+                    const existingSizing = (orderData.sizingMatrix || orderData.sizingMatrix12PtCM || orderData.measurements || {}) as Record<string, unknown>;
+                    const updatedOrderSizing = { ...existingSizing, ...contactData.sizingMatrix };
+
+                    const updatedItems = ((orderData.items || []) as Record<string, unknown>[]).map((item) => ({
+                      ...item,
+                      customMeasurements: { ...((item.customMeasurements as Record<string, unknown>) || {}), ...contactData.sizingMatrix },
+                      measurements: { ...((item.measurements as Record<string, unknown>) || {}), ...contactData.sizingMatrix }
+                    }));
+
+                    orderBatchUpdates.push(
+                      updateDoc(doc(db, 'orders', orderDoc.id), {
+                        sizingMatrix: updatedOrderSizing,
+                        sizingMatrix12PtCM: updatedOrderSizing,
+                        items: updatedItems,
+                        updatedAt: Date.now()
+                      })
+                    );
+                  }
+                });
+
+                if (orderBatchUpdates.length > 0) {
+                  await Promise.all(orderBatchUpdates);
                 }
 
                 setContactSuccessMsg('Contacto actualizado exitosamente.');
@@ -257,17 +295,11 @@ export const EditContactModal = ({
                       <div>
                         <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-4">Sizing_Matrix_12Pt_CM (Medidas)</h4>
                         <div className="grid grid-cols-2 gap-3">
-                          {[
-                            {key: 'F_Hombros', label: 'Hombros'}, {key: 'F_Cuello', label: 'Cuello'},
-                            {key: 'F_Largo_Brazo', label: 'Largo Brazo'}, {key: 'F_Ancho_Brazo', label: 'Ancho Brazo'},
-                            {key: 'F_Ancho_Torso', label: 'Ancho Torso'}, {key: 'F_Largo_Torso', label: 'Largo Torso'},
-                            {key: 'F_Cintura', label: 'Cintura (Filipina)'}, {key: 'F_Cadera', label: 'Cadera (Filipina)'},
-                            {key: 'P_Cintura', label: 'Cintura (Pantalón)'}, {key: 'P_Cadera', label: 'Cadera (Pantalón)'},
-                            {key: 'P_Ancho_Pierna', label: 'Ancho Pierna'}, {key: 'P_Largo_Pierna', label: 'Largo Pierna'}
-                          ].map(m => {
+                          {TAILORING_12_POINTS.map(m => {
                             const matrix = editingMasterContact.sizingMatrix || editingMasterContact.sizingMatrix12PtCM || editingMasterContact.measurements || {};
                             const stripped = m.key.replace(/^[FP]_/, '');
-                            const val = matrix[m.key] ?? matrix[stripped] ?? matrix[stripped.toLowerCase()] ?? '';
+                            const camel = stripped.charAt(0).toLowerCase() + stripped.slice(1).replace(/_([a-z])/gi, (_, letter) => letter.toUpperCase());
+                            const val = matrix[m.key] ?? (m.alt ? matrix[m.alt] : undefined) ?? matrix[camel] ?? matrix[stripped] ?? matrix[stripped.toLowerCase()] ?? '';
                             return (
                             <div key={m.key} className="flex flex-col">
                               <div className="flex items-center justify-between mb-1">
@@ -280,7 +312,7 @@ export const EditContactModal = ({
                                       setEditingMasterContact((prev: any) => {
                                         const curMatrix = prev.sizingMatrix || prev.sizingMatrix12PtCM || prev.measurements || {};
                                         const fWaist = curMatrix.F_Cintura ?? curMatrix.cintura ?? '';
-                                        const updated = { ...curMatrix, P_Cintura: fWaist };
+                                        const updated = { ...curMatrix, P_Cintura: fWaist, ...(fWaist ? { cintura: fWaist } : {}) };
                                         return {
                                           ...prev,
                                           sizingMatrix: updated,
@@ -309,11 +341,13 @@ export const EditContactModal = ({
                                       const curMatrix = prev.sizingMatrix || prev.sizingMatrix12PtCM || prev.measurements || {};
                                       const updated = {
                                         ...curMatrix,
-                                        [m.key]: v
+                                        [m.key]: v,
+                                        ...(m.alt ? { [m.alt]: v } : {})
                                       };
                                       // Anatomical Waist Pairing: auto-populate P_Cintura when F_Cintura is changed if not overridden
                                       if (m.key === 'F_Cintura' && !isPantalonWaistOverridden) {
                                         updated.P_Cintura = v;
+                                        updated.cintura = v;
                                       }
                                       return {
                                         ...prev,

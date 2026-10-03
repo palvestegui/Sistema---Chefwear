@@ -50,7 +50,18 @@ export const usePricingEngine = (pricing: any) => {
 
       // Single item lookup in special preset
       let presetPrice = 0;
-      const garmentKey = Object.keys(presetData).find(k => k.toLowerCase() === (item.name || '').toLowerCase()) || item.name;
+      const cleanItemName = (item.name || '').trim().toLowerCase();
+      const normItemName = cleanItemName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+      let garmentKey = Object.keys(presetData).find(k => k.toLowerCase() === cleanItemName);
+      if (!garmentKey) {
+        garmentKey = Object.keys(presetData).find(k => {
+          const normK = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return normK.includes(normItemName) || normItemName.includes(normK);
+        });
+      }
+      if (!garmentKey) garmentKey = item.name;
+
       if (presetData[garmentKey]) {
         const gData = presetData[garmentKey];
         if (typeof gData === 'number') {

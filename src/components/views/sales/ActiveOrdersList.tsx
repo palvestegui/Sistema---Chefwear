@@ -96,9 +96,7 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
   return (
     <>
       {activeOrders.map(order => {
-        const total = (order.totalPrice !== undefined && order.totalPrice !== null)
-          ? Number(order.totalPrice)
-          : getOrderBreakdown(order.items || [], order.pricingTier || order.category || order.clientType, order.paymentMethod, order.manualDiscount || 0, order.clientType, order.accountId, order.migrationFlatDiscount || 0).total;
+        const total = Number(order.totalPrice || 0);
         const collected = Number(order.amountCollected || 0);
         const pending = Math.max(0, total - collected);
 
@@ -108,7 +106,9 @@ export const ActiveOrdersList: React.FC<ActiveOrdersListProps> = ({
               <div className="flex flex-col items-center text-center">
                 <h2 className="text-2xl font-black tracking-tighter uppercase leading-none text-stone-200">Azafrán</h2>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500 mt-1">Chefwear</p>
-                <p className="text-xs font-mono font-bold text-amber-400 tracking-wider">#{order.id}</p>
+                <p className="text-xs font-mono font-bold text-amber-400 tracking-wider">
+                  {order.id.startsWith('#') ? order.id : `#${order.id}`}
+                </p>
               </div>
               <div className="text-right flex flex-col items-end gap-2">
                 <StatusBadge status={order.status} />

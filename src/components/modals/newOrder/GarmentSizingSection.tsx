@@ -10,6 +10,15 @@ export interface GarmentSizingSectionProps {
   setShowQuickSizeModal: (val: boolean) => void;
 }
 
+export const resolveGarmentCategory = (name: string): string => {
+  const norm = (name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (norm.includes('filipina') || norm.includes('chaqueta') || norm.includes('camisa')) return 'Filipina';
+  if (norm.includes('pantalon') || norm.includes('buzo') || norm.includes('jogger')) return 'Pantalón';
+  if (norm.includes('mandil') || norm.includes('delantal')) return 'Mandil';
+  if (norm.includes('gorro') || norm.includes('cofia')) return 'Gorro';
+  return name;
+};
+
 export const GarmentSizingSection: React.FC<GarmentSizingSectionProps> = ({
   newOrder,
   currentItem,
@@ -17,9 +26,44 @@ export const GarmentSizingSection: React.FC<GarmentSizingSectionProps> = ({
   setShowQuickSizeModal,
 }) => {
   const { userProfile } = useAuth();
-  const isUdiMode = newOrder.accountId === 'ACC-001' || newOrder.category === 'UDI' || newOrder.clientType === 'Estudiante UDI';
-  const hasRequirements = (requiredFields[currentItem.name] && requiredFields[currentItem.name].length > 0) || currentItem.name === 'Uniforme Completo UDI';
+
+  const isUdiMode =
+    newOrder.accountId === 'ACC-001' ||
+    newOrder.category === 'UDI' ||
+    newOrder.clientType === 'Estudiante UDI' ||
+    (newOrder.clientType === 'Universidad / Instituto' && (newOrder.companyName || '').toLowerCase().includes('udi')) ||
+    newOrder.pricingTier === 'UDI Especial' ||
+    newOrder.pricingTier === 'Contrato Institucional';
+
+  const baseCategory = resolveGarmentCategory(currentItem.name);
+  const targetRequiredFields = requiredFields[baseCategory] || requiredFields[currentItem.name] || [];
+  const isCompleteUdiBundle =
+    currentItem.name === 'Uniforme Completo UDI' ||
+    (currentItem.name || '').toLowerCase().includes('uniforme completo');
+  const hasRequirements = targetRequiredFields.length > 0 || isCompleteUdiBundle;
+
   if (!hasRequirements) return null;
+
+  const isUdiStudent = isUdiMode && (newOrder.contactRole === 'ESTUDIANTE' || newOrder.clientType === 'Estudiante UDI');
+  const isCustomSizingActive = currentItem.nonUdiSizingType === 'custom' || (!currentItem.nonUdiSizingType && isUdiStudent);
+
+  const renderMeasurementInput = (m: string, keyPrefix = '') => (
+    <div key={`${keyPrefix}${m}`} className="flex flex-col gap-1 text-left">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-stone-300 ml-1">
+        {fieldLabels[m] || m}
+      </span>
+      <input
+        type="number"
+        placeholder="0.0 cm"
+        value={currentItem.measurements?.[m] || ''}
+        onChange={e => setCurrentItem((p: any) => ({
+          ...p,
+          measurements: { ...(p.measurements || {}), [m]: e.target.value }
+        }))}
+        className="bg-stone-900 border border-stone-800 p-2.5 rounded-xl text-sm font-mono text-amber-500 placeholder:text-stone-700 outline-none focus:border-amber-500 w-full"
+      />
+    </div>
+  );
 
   return (
     <div className="pt-4 border-t border-stone-800 space-y-4">
@@ -42,9 +86,7 @@ export const GarmentSizingSection: React.FC<GarmentSizingSectionProps> = ({
               type="button"
               onClick={() => setCurrentItem((p: any) => ({ ...p, nonUdiSizingType: 'standard', sizingMode: 'Standard Size', measurements: {} }))}
               className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition ${
-                currentItem.nonUdiSizingType !== 'custom'
-                  ? 'bg-amber-600 text-white shadow'
-                  : 'text-stone-500 hover:text-stone-300'
+                !isCustomSizingActive ? 'bg-amber-600 text-white shadow' : 'text-stone-500 hover:text-stone-300'
               }`}
             >
               Talla Estándar (XS-3XL)
@@ -53,9 +95,7 @@ export const GarmentSizingSection: React.FC<GarmentSizingSectionProps> = ({
               type="button"
               onClick={() => setCurrentItem((p: any) => ({ ...p, nonUdiSizingType: 'custom', sizingMode: 'Custom Tailored', size: '' }))}
               className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition ${
-                currentItem.nonUdiSizingType === 'custom'
-                  ? 'bg-amber-600 text-white shadow'
-                  : 'text-stone-500 hover:text-stone-300'
+                isCustomSizingActive ? 'bg-amber-600 text-white shadow' : 'text-stone-500 hover:text-stone-300'
               }`}
             >
               Medidas Personalizadas (cm)
@@ -63,9 +103,9 @@ export const GarmentSizingSection: React.FC<GarmentSizingSectionProps> = ({
           </div>
         </div>
 
-        {currentItem.nonUdiSizingType === 'custom' ? (
+        {isCustomSizingActive ? (
           <div className="space-y-3">
-            {userProfile?.role === 'VENTAS' && (currentItem.name || '').toLowerCase().includes('filipina') && (
+            {userProfile?.role === 'VENTAS' && (baseCategory === 'Filipina' || (currentItem.name || '').toLowerCase().includes('filipina')) && (
               <div className="text-[10px] font-bold text-amber-400 bg-amber-950/40 border border-amber-800/60 px-3 py-1.5 rounded-xl flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <ShieldAlert size={12} className="text-amber-400" />
@@ -76,70 +116,31 @@ export const GarmentSizingSection: React.FC<GarmentSizingSectionProps> = ({
                 </span>
               </div>
             )}
-            
-            {currentItem.name === 'Uniforme Completo UDI' ? (
+
+            {isCompleteUdiBundle ? (
               <div className="space-y-4">
                 <div>
                   <h5 className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3 text-left">Medidas Filipina</h5>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    {requiredFields['Filipina'].map((m: string) => (
-                      <div key={`filipina-${m}`} className="flex flex-col gap-1 text-left">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-stone-300 ml-1">
-                          {fieldLabels[m] || m}
-                        </span>
-                        <input 
-                          type="number" 
-                          placeholder="0.0 cm" 
-                          value={currentItem.measurements[m] || ''} 
-                          onChange={e => setCurrentItem((p: any) => ({...p, measurements: {...p.measurements, [m]: e.target.value}}))} 
-                          className="bg-stone-900 border border-stone-800 p-2.5 rounded-xl text-sm font-mono text-amber-500 placeholder:text-stone-700 outline-none focus:border-amber-500 w-full"
-                        />
-                      </div>
-                    ))}
+                    {requiredFields['Filipina'].map(m => renderMeasurementInput(m, 'filipina-'))}
                   </div>
                 </div>
                 <div className="pt-2 border-t border-stone-900">
                   <h5 className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3 text-left">Medidas Pantalón</h5>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    {requiredFields['Pantalón'].map((m: string) => (
-                      <div key={`pantalon-${m}`} className="flex flex-col gap-1 text-left">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-stone-300 ml-1">
-                          {fieldLabels[m] || m}
-                        </span>
-                        <input 
-                          type="number" 
-                          placeholder="0.0 cm" 
-                          value={currentItem.measurements[m] || ''} 
-                          onChange={e => setCurrentItem((p: any) => ({...p, measurements: {...p.measurements, [m]: e.target.value}}))} 
-                          className="bg-stone-900 border border-stone-800 p-2.5 rounded-xl text-sm font-mono text-amber-500 placeholder:text-stone-700 outline-none focus:border-amber-500 w-full"
-                        />
-                      </div>
-                    ))}
+                    {requiredFields['Pantalón'].map(m => renderMeasurementInput(m, 'pantalon-'))}
                   </div>
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                {(requiredFields[currentItem.name] || []).map((m: string) => (
-                  <div key={m} className="flex flex-col gap-1 text-left">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-300 ml-1">
-                      {fieldLabels[m] || m}
-                    </span>
-                    <input 
-                      type="number" 
-                      placeholder="0.0 cm" 
-                      value={currentItem.measurements[m] || ''} 
-                      onChange={e => setCurrentItem((p: any) => ({...p, measurements: {...p.measurements, [m]: e.target.value}}))} 
-                      className="bg-stone-900 border border-stone-800 p-2.5 rounded-xl text-sm font-mono text-amber-500 placeholder:text-stone-700 outline-none focus:border-amber-500 w-full"
-                    />
-                  </div>
-                ))}
+                {targetRequiredFields.map(m => renderMeasurementInput(m))}
               </div>
             )}
           </div>
         ) : (
           <div className="flex flex-wrap gap-2 pt-1">
-            {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map((s) => (
+            {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map(s => (
               <button
                 key={s}
                 type="button"
