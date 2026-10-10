@@ -233,11 +233,15 @@ export const ProductionView: React.FC<ProductionViewProps> = (props) => {
                         if (embs.length === 0) return <span className="text-amber-500/90 italic truncate block">{(isFirst ? order.notes : '') || '—'}</span>;
                         return (
                           <div className="space-y-0.5" title={embs.join(' • ')}>
-                            {embs.map((emb, eIdx) => (
-                              <div key={eIdx} className={`truncate text-[11px] leading-tight ${emb.toLowerCase().includes('bolsillo') || emb.toLowerCase().includes('nombre') ? 'text-amber-400 font-extrabold not-italic' : 'text-stone-300'}`}>
-                                {emb}
-                              </div>
-                            ))}
+                            {embs.map((emb, eIdx) => {
+                              const isWarning = emb.includes('⚠️');
+                              const isBolsillo = emb.toLowerCase().includes('bolsillo') || emb.toLowerCase().includes('nombre');
+                              return (
+                                <div key={eIdx} className={`truncate text-[11px] leading-tight ${isWarning ? 'text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1 py-0.5 rounded font-black not-italic animate-pulse' : isBolsillo ? 'text-amber-400 font-extrabold not-italic' : 'text-stone-300'}`}>
+                                  {emb}
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })()}
@@ -439,11 +443,15 @@ export const ProductionView: React.FC<ProductionViewProps> = (props) => {
                           <div className="bg-stone-900/60 p-2 rounded-lg border border-stone-800 mt-2 w-full">
                             <div className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">Bordados</div>
                             <div className="space-y-0.5">
-                              {embs.map((emb, eIdx) => (
-                                <div key={eIdx} className={`text-[10px] leading-tight ${emb.toLowerCase().includes('bolsillo') || emb.toLowerCase().includes('nombre') ? 'text-amber-400 font-black' : 'text-stone-300 font-bold'}`}>
-                                  {emb}
-                                </div>
-                              ))}
+                              {embs.map((emb, eIdx) => {
+                                const isWarning = emb.includes('⚠️');
+                                const isBolsillo = emb.toLowerCase().includes('bolsillo') || emb.toLowerCase().includes('nombre');
+                                return (
+                                  <div key={eIdx} className={`text-[10px] leading-tight ${isWarning ? 'text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded font-black animate-pulse' : isBolsillo ? 'text-amber-400 font-black' : 'text-stone-300 font-bold'}`}>
+                                    {emb}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         );

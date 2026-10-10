@@ -90,10 +90,11 @@ export const OperationsView: React.FC<OperationsViewProps> = ({
                           return (
                             <div className="bg-stone-900/80 p-2 rounded-lg border border-stone-800 text-[10px] space-y-0.5 max-w-[320px] mt-1">
                               {embs.map((emb: string, eIdx: number) => {
+                                const isWarning = emb.includes('⚠️');
                                 const isBolsillo = emb.toLowerCase().includes('bolsillo') || emb.toLowerCase().includes('nombre');
                                 return (
-                                  <div key={eIdx} className={`flex items-center gap-1.5 font-bold ${isBolsillo ? 'text-amber-400 font-extrabold' : 'text-stone-400'}`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isBolsillo ? 'bg-amber-400 animate-pulse' : 'bg-stone-600'}`}></span>
+                                  <div key={eIdx} className={`flex items-center gap-1.5 font-bold ${isWarning ? 'text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded font-black' : isBolsillo ? 'text-amber-400 font-extrabold' : 'text-stone-400'}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isWarning ? 'bg-amber-400 animate-ping' : isBolsillo ? 'bg-amber-400 animate-pulse' : 'bg-stone-600'}`}></span>
                                     <span>{emb.startsWith('Otro:') ? emb.split('|')[0].replace('Otro:', '').trim() : emb}</span>
                                   </div>
                                 );
@@ -236,12 +237,15 @@ export const OperationsView: React.FC<OperationsViewProps> = ({
                       return (
                         <div className="flex flex-wrap gap-1 pt-0.5">
                           {embs.map((emb: string, eIdx: number) => {
+                            const isWarning = emb.includes('⚠️');
                             const isBolsillo = emb.toLowerCase().includes('bolsillo') || emb.toLowerCase().includes('nombre');
                             return (
                               <span
                                 key={eIdx}
                                 className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
-                                  isBolsillo
+                                  isWarning
+                                    ? 'text-amber-400 bg-amber-500/10 border-amber-500/30 font-black animate-pulse'
+                                    : isBolsillo
                                     ? 'text-amber-400 bg-amber-500/10 border-amber-500/30 font-black'
                                     : 'text-stone-400 bg-stone-900 border-stone-800'
                                 }`}

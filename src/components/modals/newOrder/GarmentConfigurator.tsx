@@ -366,9 +366,42 @@ export const GarmentConfigurator: React.FC<GarmentConfiguratorProps> = ({
             }
           }
 
+          // 1. Mandatory Pocket Name Check
+          if (itemToAdd.services?.includes('Nombre en el bolsillo')) {
+            if (!itemToAdd.pocketName || itemToAdd.pocketName.trim() === '') {
+              alert("⚠️ No ingresaste el nombre para el bordado en el bolsillo.\n\nPor favor, escribe el nombre exacto antes de agregar la prenda al pedido.");
+              return;
+            }
+          }
+
+          // 2. Mandatory Custom Pocket Specs Check
+          if (itemToAdd.services?.includes('Bolsillos personalizados')) {
+            if (!itemToAdd.customPocketDetails || itemToAdd.customPocketDetails.trim() === '') {
+              alert("⚠️ No ingresaste el detalle para los bolsillos personalizados.\n\nPor favor, especifica la personalización antes de agregar la prenda.");
+              return;
+            }
+          }
+
+          // 3. Mandatory Custom Service Prices Check
+          const relevantServicesList = getFilteredRelevantServices();
+          const servicesWithMissingPrices = (itemToAdd.services || []).filter((s: string) => {
+            const isEditableService = relevantServicesList.some((rs: any) => 
+              rs.name === s && (rs.type === 'Costo Adicional Editable' || rs.price === null || rs.price === undefined) && rs.type !== 'Variante Base' && rs.type !== 'Opción de Confección'
+            );
+            if (!isEditableService) return false;
+            const price = itemToAdd.customServicePrices?.[s];
+            return price === undefined || price === null || isNaN(Number(price));
+          });
+
+          if (servicesWithMissingPrices.length > 0) {
+            alert(`⚠️ Falta ingresar el precio para los siguientes servicios editables:\n• ${servicesWithMissingPrices.join('\n• ')}\n\nPor favor, define el costo en Bs antes de agregar la prenda.`);
+            return;
+          }
+
           if (orderHeaderMode === 'Orden Activa') {
             if (!isUdiMode && (!itemToAdd.fabricColor || itemToAdd.fabricColor.trim() === '')) {
-              return alert("Por favor, ingrese el color de la tela (el campo es obligatorio).");
+              alert("⚠️ Falta ingresar el color de la tela.\n\nEl color de la tela es obligatorio para órdenes activas de producción.");
+              return;
             }
 
             // Enforce 8 Filipina measurements when Ventas role is active

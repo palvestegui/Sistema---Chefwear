@@ -158,8 +158,8 @@ export const resolveItemEmbroideries = (
       if (typeof srv === 'string') {
         const lower = srv.toLowerCase();
         if (lower.includes('bolsillo') || lower.includes('nombre')) {
-          const label = pocket ? `Nombre en bolsillo: ${pocket}` : srv;
-          if (!result.some(r => r.toLowerCase().includes('bolsillo'))) {
+          const label = pocket ? `Nombre en bolsillo: ${pocket}` : '⚠️ FALTA NOMBRE EN BOLSILLO';
+          if (!result.some(r => r.toLowerCase().includes('bolsillo') || r.includes('FALTA NOMBRE'))) {
             result.push(label);
           }
         } else if (srv.toUpperCase().includes('LOGO')) {

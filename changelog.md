@@ -1,4 +1,21 @@
 ## [Unreleased]
+### Strict Pre-Cart Modal Validation & Workshop Warning Badges (`GarmentConfigurator.tsx`, `orderItemConsolidation.ts`, `OperationsView.tsx`, `ProductionView.tsx`)
+- **Pre-Flight Add-to-Cart Validation Gates (`GarmentConfigurator.tsx`)**:
+  - Implemented blocking pre-cart validation before items can be added to quotes or orders.
+  - **Mandatory Pocket Name**: When "Nombre en el bolsillo" service is selected, blocks item addition if `pocketName` is empty, displaying an explicit dialog identifying the missing field.
+  - **Mandatory Custom Pocket Specs**: When "Bolsillos personalizados" service is selected, blocks item addition if `customPocketDetails` is empty.
+  - **Mandatory Editable Service Prices**: Verifies all editable and non-preset additional services have valid numerical prices in Bs entered before adding to order.
+  - **Mandatory Fabric Color**: Enforces mandatory fabric color specification on active production orders.
+- **Workshop Warning Badges for Incomplete Orders (`orderItemConsolidation.ts`, `OperationsView.tsx`, `ProductionView.tsx`)**:
+  - In `resolveItemEmbroideries`, if "Nombre en el bolsillo" service was contracted but no name was provided, returns a prominent warning label `⚠️ FALTA NOMBRE EN BOLSILLO` instead of guessing or silently defaulting to the customer's name.
+  - In `OperationsView.tsx` (Desktop & Mobile) and `ProductionView.tsx` (Desktop & Mobile), renders explicit amber warning badges with pulsating indicators for items flagged with missing pocket names.
+- **Rule 300 / Rule 500 Compliance**:
+  - `src/components/modals/newOrder/GarmentConfigurator.tsx`: 455 lines (< 500 visual limit).
+  - `src/components/views/OperationsView.tsx`: 325 lines (< 500 visual limit).
+  - `src/components/views/ProductionView.tsx`: 491 lines (< 500 visual limit).
+  - `src/utils/orderItemConsolidation.ts`: 180 lines (< 300 logical limit).
+  - Zero `any` additions and zero `@ts-ignore` flags.
+
 ### Customer Pocket Name & Embroidery Services Workshop Visibility (`orderItemConsolidation.ts`, `OperationsView.tsx`, `ProductionView.tsx`)
 - **Unified Embroidery Resolver (`resolveItemEmbroideries`)**:
   - Implemented `resolveItemEmbroideries` in `src/utils/orderItemConsolidation.ts` with strict TypeScript typing (`EmbroiderySourceItem`).
