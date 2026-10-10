@@ -121,3 +121,60 @@ export const consolidateCommercialItems = (
 
   return result;
 };
+
+export interface EmbroiderySourceItem {
+  pocketName?: string;
+  embroideries?: string[];
+  services?: string[];
+}
+
+/**
+ * Resolves all required embroideries and pocket names for an item,
+ * consolidating explicit embroideries, services, and pocketName.
+ */
+export const resolveItemEmbroideries = (
+  item: EmbroiderySourceItem | null | undefined
+): string[] => {
+  if (!item) return [];
+  const result: string[] = [];
+  const pocket = (item.pocketName || '').trim();
+
+  // 1. Process explicit embroideries
+  if (Array.isArray(item.embroideries)) {
+    item.embroideries.forEach((emb: string) => {
+      if (typeof emb === 'string' && emb.trim()) {
+        if (emb.toLowerCase().includes('bolsillo') && pocket) {
+          result.push(`Nombre en bolsillo: ${pocket}`);
+        } else {
+          result.push(emb);
+        }
+      }
+    });
+  }
+
+  // 2. Process services (where "Nombre en el bolsillo" is often stored)
+  if (Array.isArray(item.services)) {
+    item.services.forEach((srv: string) => {
+      if (typeof srv === 'string') {
+        const lower = srv.toLowerCase();
+        if (lower.includes('bolsillo') || lower.includes('nombre')) {
+          const label = pocket ? `Nombre en bolsillo: ${pocket}` : srv;
+          if (!result.some(r => r.toLowerCase().includes('bolsillo'))) {
+            result.push(label);
+          }
+        } else if (srv.toUpperCase().includes('LOGO')) {
+          if (!result.some(r => r.toLowerCase() === srv.toLowerCase())) {
+            result.push(srv);
+          }
+        }
+      }
+    });
+  }
+
+  // 3. Fallback: If pocketName exists but was not captured above
+  if (pocket && !result.some(r => r.includes(pocket))) {
+    result.push(`Nombre en bolsillo: ${pocket}`);
+  }
+
+  return result;
+};

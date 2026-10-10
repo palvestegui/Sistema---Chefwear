@@ -5,7 +5,7 @@ const {
   ImageIcon, FileText, CheckCircle, Lock, Building2, User, Users, ChevronDown, ChevronUp
 } = LucideIcons;
 import { StatusBadge } from '../ui/StatusBadge';
-import { consolidateCommercialItems } from '../../utils/orderItemConsolidation';
+import { consolidateCommercialItems, resolveItemEmbroideries } from '../../utils/orderItemConsolidation';
 import { useData } from '../../contexts/DataContext';
 import { detectServiceExclusionConflicts } from '../../utils/serviceUtils';
 import { isUpperTailored, isLowerTailored, isTailored } from '../modals/EditContactModal';
@@ -227,8 +227,20 @@ export const ProductionView: React.FC<ProductionViewProps> = (props) => {
                         <span className="text-stone-600 font-mono text-xs">—</span>
                       )}
                     </div>
-                    <div className="text-xs text-amber-500/90 italic truncate max-w-[150px]">
-                      {item.embroideries?.join(', ') || (isFirst ? order.notes : '') || '—'}
+                    <div className="text-xs text-stone-300 max-w-[150px]">
+                      {(() => {
+                        const embs = resolveItemEmbroideries(item);
+                        if (embs.length === 0) return <span className="text-amber-500/90 italic truncate block">{(isFirst ? order.notes : '') || '—'}</span>;
+                        return (
+                          <div className="space-y-0.5" title={embs.join(' • ')}>
+                            {embs.map((emb, eIdx) => (
+                              <div key={eIdx} className={`truncate text-[11px] leading-tight ${emb.toLowerCase().includes('bolsillo') || emb.toLowerCase().includes('nombre') ? 'text-amber-400 font-extrabold not-italic' : 'text-stone-300'}`}>
+                                {emb}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div>
                       {isFirst && <ActionButtons order={order} isInstitutional={isInst} />}
@@ -420,14 +432,22 @@ export const ProductionView: React.FC<ProductionViewProps> = (props) => {
                         </div>
                       )}
 
-                      {item.embroideries && item.embroideries.length > 0 && (
-                        <div className="bg-stone-900/60 p-2 rounded-lg border border-stone-800 mt-2 w-full">
-                          <div className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">Bordados</div>
-                          <div className="text-[10px] text-amber-400/90 font-bold truncate">
-                            {item.embroideries.join(', ')}
+                      {(() => {
+                        const embs = resolveItemEmbroideries(item);
+                        if (embs.length === 0) return null;
+                        return (
+                          <div className="bg-stone-900/60 p-2 rounded-lg border border-stone-800 mt-2 w-full">
+                            <div className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">Bordados</div>
+                            <div className="space-y-0.5">
+                              {embs.map((emb, eIdx) => (
+                                <div key={eIdx} className={`text-[10px] leading-tight ${emb.toLowerCase().includes('bolsillo') || emb.toLowerCase().includes('nombre') ? 'text-amber-400 font-black' : 'text-stone-300 font-bold'}`}>
+                                  {emb}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
                 );

@@ -1,4 +1,22 @@
 ## [Unreleased]
+### Customer Pocket Name & Embroidery Services Workshop Visibility (`orderItemConsolidation.ts`, `OperationsView.tsx`, `ProductionView.tsx`)
+- **Unified Embroidery Resolver (`resolveItemEmbroideries`)**:
+  - Implemented `resolveItemEmbroideries` in `src/utils/orderItemConsolidation.ts` with strict TypeScript typing (`EmbroiderySourceItem`).
+  - Combines specifications across three disjoint vectors: explicit embroideries (`item.embroideries`), service line items (`item.services`), and customer pocket names (`item.pocketName`).
+  - Converts `"Nombre en el bolsillo"` and pocket names into explicit, prominent labels (`"Nombre en bolsillo: [NOMBRE]"`).
+  - Captures and preserves logo embroideries and bespoke service specifications without data loss.
+- **Operaciones Workshop View (`OperationsView.tsx`)**:
+  - Desktop Table View: Upgraded embroidery column to render `resolveItemEmbroideries(i)`, highlighting pocket name badges with amber accents and pulse indicators.
+  - Mobile Card Stack View: Rendered unified embroidery tags across all garment cards.
+- **Producción Workshop View (`ProductionView.tsx`)**:
+  - Desktop Table View: Replaced plain `item.embroideries` string join with multi-item embroidery stack, highlighting customer pocket names in amber.
+  - Mobile Card View: Rendered full embroidery detail list with distinctive visual markers.
+- **Rule 300 / Rule 500 Compliance**:
+  - `src/utils/orderItemConsolidation.ts`: 180 lines (< 300 logical limit).
+  - `src/components/views/OperationsView.tsx`: 321 lines (< 500 visual limit).
+  - `src/components/views/ProductionView.tsx`: 483 lines (< 500 visual limit).
+  - Zero `any` additions and zero build/type errors.
+
 ### Garment-Aware Measurement Cascading & Dynamic Production Cards (`EditContactModal.tsx`, `ProductionView.tsx`)
 - **Canonical Garment Classifiers**: Defined canonical classification helpers matching Azafrán catalog taxonomy without ambiguity:
   - `isUpperTailored`: `/filipina|chamarra|camisa/i` (upper tailored chefwear and outerwear).
