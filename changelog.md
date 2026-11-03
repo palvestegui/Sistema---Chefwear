@@ -1,4 +1,15 @@
 ## [Unreleased]
+### Mobile Browser Translation Suppression & Spanish Locale Enforcement (`index.html`)
+- **Root Document Locale & Attributes**:
+  - Replaced `<html lang="en">` with `<html lang="es" translate="no" class="notranslate">`.
+  - Fixes mobile browsers (notably Chrome Mobile on Android) detecting an English-to-Spanish language mismatch and auto-translating Spanish garment terms via erroneous English heuristics (e.g. mistranslating "Imán dentro del bolsillo del pecho" as "Estoy dentro del bolsillo del pecho" based on "I'm in").
+- **Defense-in-Depth Translation Guard**:
+  - Inserted `<meta name="google" content="notranslate" />` directly in `<head>` after charset and viewport tags.
+  - Added `translate="no" class="notranslate"` to the `#root` mount container (`<div id="root" translate="no" class="notranslate"></div>`).
+  - Completely blocks automatic and intrusive machine translation across mobile and desktop web browsers (Chrome, Edge, Safari, Samsung Internet).
+- **Compliance & Integrity**:
+  - Maintained zero extraneous runtime dependencies and clean markup in `index.html`.
+
 ### Strict Pre-Cart Modal Validation & Workshop Warning Badges (`GarmentConfigurator.tsx`, `orderItemConsolidation.ts`, `OperationsView.tsx`, `ProductionView.tsx`)
 - **Pre-Flight Add-to-Cart Validation Gates (`GarmentConfigurator.tsx`)**:
   - Implemented blocking pre-cart validation before items can be added to quotes or orders.
